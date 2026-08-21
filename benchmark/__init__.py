@@ -1,3 +1,0 @@
-"""
-NexusOCR Benchmark Module
-"""

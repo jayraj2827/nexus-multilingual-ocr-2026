@@ -11,23 +11,30 @@ __pycache__/
 *.so
 .pytest_cache/
 
-# Large Model Weights & Data
-data/models/
-data/benchmark_suite/raw_scans/
+# Model Caches & Weights
+.paddlex/
 *.pdparams
 *.pdmodel
 *.onnx
 *.traineddata
+*.bin
+*.safetensors
 
-# Outputs, Logs & Temp files
+# Local Environment & Secrets
+.env
+.env.local
+
+# Uploads & Data
+data/uploads/
+uploads/
 outputs/
 logs/
 *.log
 temp/
+
+# OS & Editor Configs
 .DS_Store
 Thumbs.db
-
-# IDE & Editor Configs
 .vscode/
 .idea/
 *.swp

@@ -1,29 +1,23 @@
-// NexusOCR Frontend Application Logic
+// NexusOCR Frontend Application Logic (KISS Architecture)
 
 let currentDocResult = null;
 let currentPageIdx = 0;
 let selectedFile = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    setupTabs();
     setupDropzone();
     setupProcessButton();
     setupPagination();
+    window.addEventListener('resize', handleResize);
 });
 
-function setupTabs() {
-    const tabBtns = document.querySelectorAll('.tab-btn');
-    tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            tabBtns.forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-            btn.classList.add('active');
-            const targetId = `tab${btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)}`;
-            const targetContent = document.getElementById(targetId);
-            if (targetContent) targetContent.classList.add('active');
-        });
-    });
+function handleResize() {
+    if (currentDocResult && currentDocResult.pages[currentPageIdx]) {
+        const imgEl = document.getElementById('pageImage');
+        if (imgEl && imgEl.complete) {
+            renderBBoxes(currentDocResult.pages[currentPageIdx], imgEl);
+        }
+    }
 }
 
 function setupDropzone() {
@@ -60,6 +54,8 @@ function setupDropzone() {
 
 function setupProcessButton() {
     const btn = document.getElementById('processBtn');
+    const outputBox = document.getElementById('markdownContent');
+
     btn.addEventListener('click', async () => {
         if (!selectedFile) {
             alert('Please select a PDF document first.');
@@ -67,15 +63,11 @@ function setupProcessButton() {
         }
 
         btn.disabled = true;
-        btn.innerText = 'Processing Adaptive OCR...';
+        btn.innerText = 'Extracting Text (Processing...)...';
+        outputBox.innerText = 'Processing document through NexusOCR 3-Pillar Engine...\n\n- Pillar 1: Digital Text & Table extraction...\n- Pillar 2: Docling Layout intelligence...\n- Pillar 3: Local Ollama Vision VLM...\n\nPlease wait a moment.';
 
         const formData = new FormData();
         formData.append('file', selectedFile);
-
-        const schemaKeys = document.getElementById('schemaKeys').value;
-        if (schemaKeys.trim()) {
-            formData.append('schema_keys', schemaKeys);
-        }
 
         try {
             const response = await fetch('/api/process', {
@@ -84,17 +76,19 @@ function setupProcessButton() {
             });
 
             if (!response.ok) {
-                throw new Error(`Server returned status ${response.status}`);
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.detail || `Server returned status ${response.status}`);
             }
 
             currentDocResult = await response.json();
             currentPageIdx = 0;
             renderDocumentResult(currentDocResult);
         } catch (err) {
+            outputBox.innerText = `OCR Processing Error: ${err.message}`;
             alert(`OCR Processing Error: ${err.message}`);
         } finally {
             btn.disabled = false;
-            btn.innerText = 'Run Adaptive OCR';
+            btn.innerText = 'Extract Text';
         }
     });
 }
@@ -116,19 +110,10 @@ function setupPagination() {
 }
 
 function renderDocumentResult(doc) {
-    // 1. Update Header Metrics
     document.getElementById('totalLatency').innerText = `${doc.total_execution_time_ms.toFixed(1)} ms`;
-    document.getElementById('avgTrustScore').innerText = `${(doc.average_trust_score * 100).toFixed(0)}%`;
-    document.getElementById('vlmRate').innerText = `${(doc.vlm_escalation_rate * 100).toFixed(1)}%`;
-
-    // 2. Update Output Previews
+    document.getElementById('totalPages').innerText = `${doc.total_pages}`;
     document.getElementById('markdownContent').innerText = doc.full_markdown || 'No text extracted.';
-    document.getElementById('jsonContent').innerText = JSON.stringify(doc.structured_json, null, 2);
 
-    // 3. Render Key-Value Fields Grid
-    renderFieldsGrid(doc.structured_json.extracted_fields || {});
-
-    // 4. Show Page Navigator & Render Page
     if (doc.pages && doc.pages.length > 0) {
         document.getElementById('pageNavigator').style.display = 'flex';
         document.getElementById('previewContainer').style.display = 'flex';
@@ -142,7 +127,6 @@ function renderCurrentPage() {
     const page = currentDocResult.pages[currentPageIdx];
     document.getElementById('pageIndicator').innerText = `Page ${page.page_number} / ${currentDocResult.pages.length}`;
 
-    // Request page image render from backend
     const imgEl = document.getElementById('pageImage');
     imgEl.src = `/api/page_image/${encodeURIComponent(currentDocResult.file_name)}/${page.page_number}`;
 
@@ -155,49 +139,47 @@ function renderBBoxes(page, imgEl) {
     const overlay = document.getElementById('bboxOverlay');
     overlay.innerHTML = '';
 
-    const scaleX = imgEl.clientWidth / page.width;
-    const scaleY = imgEl.clientHeight / page.height;
+    const natW = imgEl.naturalWidth || page.width || 1;
+    const natH = imgEl.naturalHeight || page.height || 1;
+    const scaleX = imgEl.clientWidth / natW;
+    const scaleY = imgEl.clientHeight / natH;
 
-    page.regions.forEach(r => {
-        const box = document.createElement('div');
-        box.className = 'bbox-box';
-        if (r.text_type === 'handwritten') box.classList.add('handwriting');
-        if (r.engine_used.includes('vlm')) box.classList.add('vlm');
-
-        box.style.left = `${r.bbox.xmin * scaleX}px`;
-        box.style.top = `${r.bbox.ymin * scaleY}px`;
-        box.style.width = `${(r.bbox.xmax - r.bbox.xmin) * scaleX}px`;
-        box.style.height = `${(r.bbox.ymax - r.bbox.ymin) * scaleY}px`;
-
-        box.title = `[${r.script}] ${r.text} (${(r.composite_confidence * 100).toFixed(0)}%)`;
-        overlay.appendChild(box);
-    });
-}
-
-function renderFieldsGrid(fields) {
-    const grid = document.getElementById('fieldsGrid');
-    grid.innerHTML = '';
-
-    const keys = Object.keys(fields);
-    if (keys.length === 0) {
-        grid.innerHTML = '<p class="placeholder-text">No target fields identified.</p>';
-        return;
+    // 1. Render Table Bounding Boxes (Orange)
+    if (page.tables) {
+        page.tables.forEach(t => {
+            const box = document.createElement('div');
+            box.className = 'bbox-box bbox-table';
+            box.style.left = `${t.bbox.xmin * scaleX}px`;
+            box.style.top = `${t.bbox.ymin * scaleY}px`;
+            box.style.width = `${(t.bbox.xmax - t.bbox.xmin) * scaleX}px`;
+            box.style.height = `${(t.bbox.ymax - t.bbox.ymin) * scaleY}px`;
+            box.title = `[Table] ${t.num_rows} rows x ${t.num_cols} cols`;
+            overlay.appendChild(box);
+        });
     }
 
-    keys.forEach(k => {
-        const card = document.createElement('div');
-        card.className = 'field-card';
-        card.innerHTML = `
-            <div class="field-key">${k}</div>
-            <div class="field-val">${fields[k]}</div>
-        `;
-        grid.appendChild(card);
-    });
+    // 2. Render Line/Region Bounding Boxes
+    if (page.regions) {
+        page.regions.forEach(r => {
+            const box = document.createElement('div');
+            box.className = 'bbox-box';
+            if (r.category === 'header') box.classList.add('bbox-header');
+            if (r.category === 'figure') box.classList.add('bbox-figure');
+
+            box.style.left = `${r.bbox.xmin * scaleX}px`;
+            box.style.top = `${r.bbox.ymin * scaleY}px`;
+            box.style.width = `${Math.max(2, (r.bbox.xmax - r.bbox.xmin) * scaleX)}px`;
+            box.style.height = `${Math.max(2, (r.bbox.ymax - r.bbox.ymin) * scaleY)}px`;
+
+            box.title = `[${r.category}] ${r.text}`;
+            overlay.appendChild(box);
+        });
+    }
 }
 
-function copyContent(elementId) {
-    const text = document.getElementById(elementId).innerText;
+function copyExtractedText() {
+    const text = document.getElementById('markdownContent').innerText;
     navigator.clipboard.writeText(text).then(() => {
-        alert('Copied to clipboard!');
+        alert('Extracted text copied to clipboard!');
     });
 }

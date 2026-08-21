@@ -1,3 +1,0 @@
-"""
-NexusOCR Pluggable Recognizers Module
-"""

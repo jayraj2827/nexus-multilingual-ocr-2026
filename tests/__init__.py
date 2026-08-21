@@ -1,3 +1,0 @@
-"""
-NexusOCR Test Suite
-"""
