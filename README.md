@@ -108,8 +108,8 @@ git clone https://github.com/jayraj2827/nexus-multilingual-ocr-2026.git
 cd nexus-multilingual-ocr-2026
 
 # Create and activate virtual environment
-python -m venv .venv
-.venv\Scripts\activate
+python -m venv venv
+venv\Scripts\activate
 
 # Install core dependencies
 pip install -r requirements.txt
