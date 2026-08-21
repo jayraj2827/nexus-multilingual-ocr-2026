@@ -1,0 +1,33 @@
+# Python Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Large Model Weights & Data
+data/models/
+data/benchmark_suite/raw_scans/
+*.pdparams
+*.pdmodel
+*.onnx
+*.traineddata
+
+# Outputs, Logs & Temp files
+outputs/
+logs/
+*.log
+temp/
+.DS_Store
+Thumbs.db
+
+# IDE & Editor Configs
+.vscode/
+.idea/
+*.swp

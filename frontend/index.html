@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexusOCR — Document Intelligence Engine</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation -->
+        <header class="navbar">
+            <div class="brand">
+                <div class="logo-icon">⚡</div>
+                <h1>Nexus<span>OCR</span></h1>
+                <span class="badge cpu-badge">CPU-First Engine</span>
+            </div>
+            <div class="nav-metrics" id="headerMetrics">
+                <div class="metric-item">
+                    <span class="metric-label">Latency:</span>
+                    <span class="metric-value" id="totalLatency">- ms</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Trust Score:</span>
+                    <span class="metric-value" id="avgTrustScore">-%</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">VLM Rate:</span>
+                    <span class="metric-value" id="vlmRate">0.0%</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Left Panel: Document Upload & Page View -->
+            <section class="panel upload-panel">
+                <div class="panel-header">
+                    <h2>Document Input</h2>
+                    <span class="subtext">Upload any multilingual PDF</span>
+                </div>
+
+                <div class="dropzone" id="dropzone">
+                    <input type="file" id="fileInput" accept=".pdf" class="file-input">
+                    <div class="dropzone-content">
+                        <div class="upload-icon">📄</div>
+                        <p class="dropzone-text"><strong>Drag & Drop PDF here</strong> or <span>Browse</span></p>
+                        <p class="file-info" id="selectedFileInfo">Supports English, Hindi, Gujarati, Tables & Forms</p>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <label for="schemaKeys">Target Key-Value Schema (Optional):</label>
+                    <input type="text" id="schemaKeys" class="schema-input" placeholder="e.g. invoice, total, date, amount, gstin">
+                    <button class="btn-primary" id="processBtn">Run Adaptive OCR</button>
+                </div>
+
+                <!-- Page Navigator -->
+                <div class="page-navigator" id="pageNavigator" style="display: none;">
+                    <button class="btn-page" id="prevPageBtn">◀ Prev</button>
+                    <span id="pageIndicator">Page 1 / 1</span>
+                    <button class="btn-page" id="nextPageBtn">Next ▶</button>
+                </div>
+
+                <!-- Bounding Box Preview Canvas -->
+                <div class="preview-container" id="previewContainer" style="display: none;">
+                    <div class="canvas-wrapper">
+                        <img id="pageImage" class="page-image" alt="Page Render">
+                        <div id="bboxOverlay" class="bbox-overlay"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Extraction Output & Provenance -->
+            <section class="panel output-panel">
+                <div class="panel-header">
+                    <h2>Extraction Intelligence</h2>
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="markdown">Markdown</button>
+                        <button class="tab-btn" data-tab="json">JSON & BBoxes</button>
+                        <button class="tab-btn" data-tab="fields">Extracted Fields</button>
+                    </div>
+                </div>
+
+                <div class="tab-content active" id="tabMarkdown">
+                    <div class="output-toolbar">
+                        <span class="tool-title">Reconstructed Reading Order & Tables</span>
+                        <button class="btn-copy" onclick="copyContent('markdownContent')">Copy</button>
+                    </div>
+                    <pre class="content-box" id="markdownContent">Awaiting document processing...</pre>
+                </div>
+
+                <div class="tab-content" id="tabJson">
+                    <div class="output-toolbar">
+                        <span class="tool-title">Structured Output with Provenance Metadata</span>
+                        <button class="btn-copy" onclick="copyContent('jsonContent')">Copy JSON</button>
+                    </div>
+                    <pre class="content-box json-box" id="jsonContent">{}</pre>
+                </div>
+
+                <div class="tab-content" id="tabFields">
+                    <div class="output-toolbar">
+                        <span class="tool-title">Spatial Raycasted Key-Value Entities</span>
+                    </div>
+                    <div class="fields-grid" id="fieldsGrid">
+                        <p class="placeholder-text">No fields extracted yet.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

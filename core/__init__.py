@@ -1,0 +1,3 @@
+"""
+NexusOCR Core Module
+"""
