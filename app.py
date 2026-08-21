@@ -7,7 +7,7 @@ import sys
 import os
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 # Ensure UTF-8 output encoding
 if sys.platform == "win32":
@@ -32,8 +32,12 @@ app = FastAPI(title="NexusOCR Engine", version="2.0.0")
 # Initialize pipeline
 pipeline = NexusOCRPipeline()
 
+# Paths
+BASE_DIR = Path(__file__).resolve().parent
+frontend_dir = BASE_DIR / "frontend"
+fixtures_dir = BASE_DIR / "tests" / "fixtures"
+
 # Mount static frontend
-frontend_dir = Path(__file__).resolve().parent / "frontend"
 app.mount("/static", StaticFiles(directory=str(frontend_dir)), name="static")
 
 
@@ -46,12 +50,69 @@ async def serve_index():
     return FileResponse(str(index_path))
 
 
+@app.get("/api/samples")
+async def list_sample_documents():
+    """
+    Returns available demo sample documents for 1-click hackathon evaluation.
+    """
+    samples = []
+    # Check fixtures directory
+    if fixtures_dir.exists():
+        for f in fixtures_dir.glob("*.pdf"):
+            samples.append({
+                "name": f.name,
+                "display": f.stem.replace("_", " ").title(),
+                "type": "fixture"
+            })
+
+    # Check uploads directory for existing rich demo files
+    demo_aliases = {
+        "12th guj med QP Acc.pdf": "Saheb Tuition 12th Accounts (Printed Gujarati)",
+        "12th guj med Answersheet Stat.pdf": "12th Board Answersheet (Handwritten Gujarati)",
+        "CBSE_Class10_MathBasicQP.pdf": "CBSE Class 10 Math Exam (Math & Tables)",
+        "Multilingual Document OCR  Extraction Pipeline.pdf": "Multilingual Hackathon Deck (13 Pages)",
+        "MCA Last Year Marksheet.pdf": "University Marksheet (Dense Financial Table)",
+    }
+    for filename, display_name in demo_aliases.items():
+        p = config.UPLOAD_DIR / filename
+        if p.exists():
+            samples.append({
+                "name": filename,
+                "display": display_name,
+                "type": "demo"
+            })
+
+    return JSONResponse(content=samples)
+
+
+@app.post("/api/process_sample/{filename}")
+async def process_sample_document(filename: str):
+    """
+    1-Click process a preset sample document.
+    """
+    target_path = config.UPLOAD_DIR / filename
+    if not target_path.exists():
+        fixture_path = fixtures_dir / filename
+        if fixture_path.exists():
+            target_path = fixture_path
+        else:
+            raise HTTPException(status_code=404, detail=f"Sample file '{filename}' not found.")
+
+    try:
+        result = pipeline.process_pdf(str(target_path))
+        return JSONResponse(content=jsonable_encoder(result))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Sample processing failed: {str(e)}")
+
+
 @app.post("/api/process")
 async def process_document_api(
     file: UploadFile = File(...)
 ):
     """
-    Receives PDF document upload and executes 3-pillar extraction.
+    Receives PDF document upload and executes tiered extraction.
     """
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
@@ -76,9 +137,9 @@ async def get_page_image(filename: str, page_num: int):
     """
     file_path = config.UPLOAD_DIR / filename
     if not file_path.exists():
-        bench_path = config.BENCHMARK_DIR / filename
-        if bench_path.exists():
-            file_path = bench_path
+        fixture_path = fixtures_dir / filename
+        if fixture_path.exists():
+            file_path = fixture_path
         else:
             raise HTTPException(status_code=404, detail="Document file not found.")
 
@@ -95,8 +156,20 @@ async def get_page_image(filename: str, page_num: int):
     return Response(content=img_bytes, media_type="image/jpeg")
 
 
+@app.get("/api/health")
+async def health_check():
+    """Returns engine telemetry and GPU status."""
+    import paddle
+    return {
+        "status": "healthy",
+        "cuda_available": paddle.is_compiled_with_cuda(),
+        "gpu_count": paddle.device.cuda.device_count() if paddle.is_compiled_with_cuda() else 0,
+        "gpu_name": paddle.device.cuda.get_device_name(0) if (paddle.is_compiled_with_cuda() and paddle.device.cuda.device_count() > 0) else "CPU Only"
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", 8080))
+    port = config.SERVER_PORT
     print(f"Starting NexusOCR server on http://127.0.0.1:{port} ...", flush=True)
-    uvicorn.run("app:app", host="127.0.0.1", port=port, reload=False)
+    uvicorn.run("app:app", host=config.SERVER_HOST, port=port, reload=True)

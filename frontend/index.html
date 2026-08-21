@@ -3,84 +3,217 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NexusOCR — Multilingual Document OCR</title>
+    <title>NexusOCR — Document Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Gujarati:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="/static/styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Top Navigation -->
-        <header class="navbar">
-            <div class="brand">
-                <div class="logo-icon">⚡</div>
-                <h1>Nexus<span>OCR</span></h1>
-                <span class="badge cpu-badge">CPU-First Engine</span>
-            </div>
-            <div class="nav-metrics" id="headerMetrics">
-                <div class="metric-item">
-                    <span class="metric-label">Latency:</span>
-                    <span class="metric-value" id="totalLatency">- ms</span>
+    <div class="app-layout">
+        <!-- Top App Navigation -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="brand">
+                    <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <span class="brand-name">Nexus<strong>OCR</strong></span>
+                    <span class="version-tag">MVP</span>
                 </div>
-                <div class="metric-item">
-                    <span class="metric-label">Pages:</span>
-                    <span class="metric-value" id="totalPages">-</span>
+            </div>
+
+            <div class="header-center">
+                <div class="sample-selector">
+                    <span class="sample-label">Sample:</span>
+                    <select id="sampleSelect" class="sample-dropdown">
+                        <option value="">Load Preset Document...</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="stat-pill" title="Processing Time">
+                    <span class="stat-label">Latency</span>
+                    <span class="stat-value" id="totalLatency">—</span>
+                </div>
+                <div class="stat-pill" title="Confidence Score">
+                    <span class="stat-label">Confidence</span>
+                    <span class="stat-value stat-accent" id="trustScore">—</span>
+                </div>
+                <div class="stat-pill" title="Page Count">
+                    <span class="stat-label">Pages</span>
+                    <span class="stat-value" id="totalPages">—</span>
                 </div>
             </div>
         </header>
 
-        <!-- Main Workspace -->
-        <main class="main-content">
-            <!-- Left: Upload & Document Preview -->
-            <section class="panel left-panel">
-                <div class="panel-header">
-                    <h2>Upload Document</h2>
-                    <span class="subtext">English, Hindi, Gujarati, Tables & Scans</span>
-                </div>
+        <!-- Main Studio Split View -->
+        <main class="workspace">
+            <!-- Left Panel: Document View & Upload -->
+            <section class="pane left-pane">
+                <!-- Collapsible Upload Strip -->
+                <div class="upload-zone" id="uploadBar">
+                    <div class="drop-area" id="dropzone">
+                        <input type="file" id="fileInput" accept=".pdf" class="file-input">
+                        <div class="drop-prompt">
+                            <svg class="upload-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <div class="prompt-text">
+                                <span class="primary-prompt">Drop PDF here, or <span class="browse-link">browse</span></span>
+                                <span class="sub-prompt">English, Gujarati, Hindi, Tables & Scans</span>
+                            </div>
+                        </div>
+                    </div>
 
-                <div class="dropzone" id="dropzone">
-                    <input type="file" id="fileInput" accept=".pdf" class="file-input">
-                    <div class="dropzone-content">
-                        <div class="upload-icon">📄</div>
-                        <p class="dropzone-text"><strong>Drag & Drop PDF here</strong> or <span>Browse</span></p>
-                        <p class="file-info" id="selectedFileInfo">Select any PDF to extract text</p>
+                    <!-- Active File Pill (shown after selection) -->
+                    <div class="file-strip" id="uploadActionRow" style="display: none;">
+                        <div class="file-meta">
+                            <svg class="file-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            <span class="file-name" id="pillFileName">document.pdf</span>
+                            <span class="file-size" id="pillFileSize">0 KB</span>
+                        </div>
+                        <div class="file-actions">
+                            <button class="btn btn-ghost" id="changeFileBtn">Change</button>
+                            <button class="btn btn-primary" id="reProcessBtn">Re-run</button>
+                        </div>
                     </div>
                 </div>
 
-                <div class="action-section">
-                    <button class="btn-primary" id="processBtn">Extract Text</button>
+                <!-- Document Toolbar -->
+                <div class="canvas-bar" id="canvasToolbar" style="display: none;">
+                    <div class="pager-controls">
+                        <button class="btn-ctrl" id="prevPageBtn" title="Previous Page">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                        <span class="pager-text" id="pageIndicator">Page 1 / 1</span>
+                        <button class="btn-ctrl" id="nextPageBtn" title="Next Page">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </button>
+                    </div>
+
+                    <div class="tier-indicator" id="pageTierPill">Tier 1: Digital Native</div>
+
+                    <div class="view-controls">
+                        <label class="toggle-switch" title="Toggle bounding boxes">
+                            <input type="checkbox" id="toggleBBoxCheckbox" checked>
+                            <span class="toggle-track"></span>
+                            <span class="toggle-caption">BBoxes</span>
+                        </label>
+                        <button class="btn-ctrl" id="zoomOutBtn" title="Zoom Out">−</button>
+                        <span class="zoom-readout" id="zoomLevelText">100%</span>
+                        <button class="btn-ctrl" id="zoomInBtn" title="Zoom In">+</button>
+                        <button class="btn-ctrl" id="zoomFitBtn" title="Fit Width">Fit</button>
+                    </div>
                 </div>
 
-                <!-- Page Navigator -->
-                <div class="page-navigator" id="pageNavigator" style="display: none;">
-                    <button class="btn-page" id="prevPageBtn">◀ Prev</button>
-                    <span id="pageIndicator">Page 1 / 1</span>
-                    <button class="btn-page" id="nextPageBtn">Next ▶</button>
-                </div>
+                <!-- Document Image Canvas -->
+                <div class="viewport" id="viewportWrapper">
+                    <!-- Loading Overlay -->
+                    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+                        <div class="spinner-ring"></div>
+                        <p class="loading-title" id="loadingTitle">Processing document...</p>
+                        <p class="loading-subtitle" id="loadingSubtitle">Running tiered neural pipeline</p>
+                    </div>
 
-                <!-- Document Image Preview -->
-                <div class="preview-container" id="previewContainer" style="display: none;">
-                    <div class="canvas-wrapper">
-                        <img id="pageImage" class="page-image" alt="Page View">
-                        <div id="bboxOverlay" class="bbox-overlay"></div>
+                    <div class="placeholder-state" id="emptyCanvasState">
+                        <svg class="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="9" y1="21" x2="9" y2="9"></line>
+                        </svg>
+                        <p class="placeholder-title">No document loaded</p>
+                        <p class="placeholder-desc">Upload a PDF or select a sample above to view extraction</p>
+                    </div>
+                    <div class="canvas-mount" id="canvasStage" style="display: none;">
+                        <img id="pageImage" class="rendered-page" alt="Document Page">
+                        <div id="bboxOverlay" class="bbox-layer"></div>
                     </div>
                 </div>
             </section>
 
-            <!-- Right: Textual Output View -->
-            <section class="panel right-panel">
-                <div class="panel-header">
-                    <h2>Extracted Text</h2>
-                    <div class="header-actions">
-                        <button class="btn-copy" onclick="copyExtractedText()">Copy Text</button>
+            <!-- Right Panel: Intelligence Output -->
+            <section class="pane right-pane">
+                <!-- Studio Tabs -->
+                <div class="pane-header">
+                    <nav class="tab-group">
+                        <button class="tab-item active" data-tab="markdown">Markdown</button>
+                        <button class="tab-item" data-tab="tables">Tables</button>
+                        <button class="tab-item" data-tab="json">JSON</button>
+                        <button class="tab-item" data-tab="raw">Raw</button>
+                    </nav>
+
+                    <div class="action-group">
+                        <button class="btn-subtle" id="copyCurrentTabBtn">Copy</button>
+                        <button class="btn-subtle" id="downloadMdBtn">.md</button>
+                        <button class="btn-subtle" id="downloadJsonBtn">.json</button>
                     </div>
                 </div>
 
-                <div class="text-output-wrapper">
-                    <pre class="content-box" id="markdownContent">Upload a PDF document to view extracted text...</pre>
+                <!-- Pane Content Views -->
+                <div class="pane-body">
+                    <!-- Markdown Tab -->
+                    <div class="content-view active" id="tab-markdown">
+                        <div class="doc-typography" id="markdownRendered">
+                            <div class="empty-content-prompt">Extracted document content will appear here</div>
+                        </div>
+                    </div>
+
+                    <!-- Tables Tab -->
+                    <div class="content-view" id="tab-tables">
+                        <div class="table-deck" id="tablesContainer">
+                            <div class="empty-content-prompt">No structured tables detected</div>
+                        </div>
+                    </div>
+
+                    <!-- JSON Tab -->
+                    <div class="content-view" id="tab-json">
+                        <pre class="code-view" id="jsonCodeViewer">{ "status": "idle" }</pre>
+                    </div>
+
+                    <!-- Raw Text Tab -->
+                    <div class="content-view" id="tab-raw">
+                        <textarea class="raw-editor" id="rawTextViewer" readonly placeholder="Raw extracted text..."></textarea>
+                    </div>
                 </div>
+
+                <!-- Status Footer -->
+                <footer class="pane-footer">
+                    <div class="footer-status">
+                        <span class="pulse-dot"></span>
+                        <span class="status-label" id="statusText">Ready</span>
+                    </div>
+                    <div class="footer-tags">
+                        <span class="tag" id="charCountTag">0 chars</span>
+                        <span class="tag" id="langDetectTag">Scripts: Standard</span>
+                    </div>
+                </footer>
             </section>
         </main>
     </div>
+
+    <!-- Tooltip -->
+    <div id="bboxTooltip" class="tooltip-box" style="display: none;">
+        <div class="tooltip-bar">
+            <span class="tooltip-tag" id="ttType">Text</span>
+            <span class="tooltip-score" id="ttConf">100%</span>
+        </div>
+        <div class="tooltip-text" id="ttText">Content</div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">Copied to clipboard</div>
 
     <script src="/static/app.js"></script>
 </body>

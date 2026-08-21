@@ -183,11 +183,8 @@ pytest tests/test_engine.py -v
 
 ## 🔮 Future Roadmap & Enhancements
 
+- **🐘 PostgreSQL & Vector Database Integration:** Integrate a robust **PostgreSQL** backend with `pgvector` for persistent document storage, extraction audit histories, and semantic document search / retrieval-augmented generation (RAG) over processed archives.
+- **⚛️ Frontend Modernization (React + Vite):** Transition the client interface to a modular **React + Tailwind CSS** architecture featuring batch multi-document queues, interactive side-by-side annotation tools, and real-time WebSocket progress streaming.
 - **🧠 Vision-Language Model (VLM) Escalation Tier:** Integrate a lightweight Vision-Language Model (e.g., *Qwen2.5-VL 3B / Gemma-3-VL / Indic VLM*) specifically tailored for high-accuracy recognition of **complex, cursive regional handwritten text** (such as Gujarati and Hindi student board answersheets, doctor prescriptions, and historical manuscripts).
 - **📑 Deep Table Reconstruction:** Enhance cell-span and nested table recognition using dedicated layout transformers.
 - **🐳 Docker Containerization:** Provide ready-to-use Docker images with pre-configured CUDA runtime drivers for one-click cross-platform deployment.
-
----
-
-## 📜 License
-MIT License. Built for the Nexus Hackathon 2026.

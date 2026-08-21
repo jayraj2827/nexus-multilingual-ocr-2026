@@ -11,7 +11,7 @@ import sys
 import types
 import time
 import logging
-from typing import Optional
+from typing import Optional, List
 
 import cv2
 import numpy as np
@@ -23,7 +23,7 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-from engine.types import PageResult, ExtractionSource
+from engine.types import PageResult, ExtractedRegion, BoundingBox, ExtractionSource
 import config
 
 logging.getLogger("ppocr").setLevel(logging.WARNING)
@@ -88,7 +88,7 @@ class PaddleOCREngine:
     def process_page_image(self, page_img: np.ndarray, page_num: int) -> Optional[PageResult]:
         """
         Extracts text from a scanned/image page using PaddleOCR on GPU.
-        Returns a PageResult with clean Markdown text.
+        Returns a PageResult with clean Markdown text and bounding boxes.
         """
         if page_img is None or page_img.size == 0:
             return None
@@ -114,22 +114,58 @@ class PaddleOCREngine:
             r = result[0]
             texts = r.get("rec_texts", [])
             scores = r.get("rec_scores", [])
+            boxes = r.get("rec_boxes", [])
+            dt_polys = r.get("dt_polys", [])
 
             if not texts:
                 print(f"[NexusOCR] [P3] No text detected on Page {page_num}.", flush=True)
                 return None
 
-            # Filter low-confidence lines (< 0.6)
-            lines = [
-                t.strip()
-                for t, s in zip(texts, scores or [1.0] * len(texts))
-                if t.strip() and (s is None or s >= 0.6)
-            ]
-            markdown_text = "\n".join(lines)
+            regions: List[ExtractedRegion] = []
+            clean_lines = []
+
+            for idx, (t, s) in enumerate(zip(texts, scores or [1.0] * len(texts))):
+                t_str = t.strip()
+                if not t_str or (s is not None and s < 0.5):
+                    continue
+
+                clean_lines.append(t_str)
+
+                # Extract bounding box from rec_boxes or dt_polys
+                box_coords = None
+                if idx < len(boxes) and boxes[idx] is not None:
+                    b = boxes[idx]
+                    if len(b) >= 4:
+                        box_coords = [float(b[0]), float(b[1]), float(b[2]), float(b[3])]
+                elif idx < len(dt_polys) and dt_polys[idx] is not None:
+                    pts = np.array(dt_polys[idx])
+                    if len(pts) > 0:
+                        xmin = float(np.min(pts[:, 0]))
+                        ymin = float(np.min(pts[:, 1]))
+                        xmax = float(np.max(pts[:, 0]))
+                        ymax = float(np.max(pts[:, 1]))
+                        box_coords = [xmin, ymin, xmax, ymax]
+
+                if box_coords:
+                    regions.append(ExtractedRegion(
+                        id=f"p{page_num}_ocr_{idx}",
+                        bbox=BoundingBox(
+                            xmin=box_coords[0],
+                            ymin=box_coords[1],
+                            xmax=box_coords[2],
+                            ymax=box_coords[3]
+                        ),
+                        text=t_str,
+                        category="text",
+                        confidence=float(s) if s is not None else 1.0,
+                        source=ExtractionSource.DOCLING_LAYOUT
+                    ))
+
+            markdown_text = "\n\n".join(clean_lines)
 
             print(
                 f"[NexusOCR] [P3: PaddleOCR GPU] Page {page_num} - "
-                f"{len(lines)} lines in {elapsed_ms:.1f}ms [OK]",
+                f"{len(clean_lines)} lines, {len(regions)} boxes in {elapsed_ms:.1f}ms [OK]",
                 flush=True
             )
 
@@ -139,6 +175,7 @@ class PaddleOCREngine:
                 height=h,
                 is_digital=False,
                 trust_score=0.95,
+                regions=regions,
                 markdown=markdown_text,
                 source=ExtractionSource.DOCLING_LAYOUT,
                 execution_time_ms=elapsed_ms,
