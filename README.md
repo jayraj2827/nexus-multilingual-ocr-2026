@@ -70,27 +70,71 @@ Through iterative profiling on our target hardware (**NVIDIA RTX 4060 8GB VRAM /
 
 ```
 NexusOCR/
-├── app.py                 # FastAPI Web Server & REST Endpoints
-├── config.py              # Centralized Configuration & Thresholds
-├── pipeline.py            # NexusOCR Unified Orchestrator
-├── requirements.txt       # Python Dependency Specifications
-├── .env.example           # Environment Configuration Template
-├── .gitignore             # Git Ignore Rules
-├── base_plan.md           # Architectural Design & Test Journey
+├── app.py                      # FastAPI Web Server (Compatibility Bridge)
+├── config.py                   # Configuration & Constants (Compatibility Bridge)
+├── pipeline.py                 # Pipeline Orchestrator (Compatibility Bridge)
+├── requirements.txt            # Python Dependency Specifications
+├── pytest.ini                  # Pytest Configuration
 │
-├── engine/                # Core Extraction Engines
-│   ├── types.py           # Pydantic v2 Contract Models
-│   ├── digital_extractor.py # Tier 1: PyMuPDF Fast Digital Parser
-│   └── paddle_ocr_engine.py # Tier 2: PaddleOCR PP-OCRv6 CUDA Engine
+├── nexusocr/                   # Core Hybrid Feature-Oriented Architecture
+│   ├── pipeline/               # Centralized Pipeline Execution Runtime
+│   │   ├── runner.py           # Pipeline Runner & Lifecycle Scheduler
+│   │   ├── context.py          # Shared Processing Context & Cancellation
+│   │   ├── stage.py            # Abstract Pipeline Stage Base
+│   │   └── execution.py        # Stage Execution Boundaries & Metrics
+│   │
+│   ├── features/               # Modular Feature Services
+│   │   ├── document_ocr/       # 2-Tier OCR Routing Service & Stage
+│   │   ├── layout/             # Deep Document Layout & Table Service
+│   │   ├── vision/             # Computer Vision & Preview Service
+│   │   ├── speech/             # Speech Audio Transcription Service
+│   │   └── translation/        # Multilingual Translation Service
+│   │
+│   ├── engines/                # External Library Adapters
+│   │   ├── ocr/                # PaddleOCR, PyMuPDF, and Docling Adapters
+│   │   ├── vision/             # Vision Analyzer Adapters
+│   │   ├── speech/             # Speech Engine Adapters
+│   │   └── translation/        # Script & Translation Engine Adapters
+│   │
+│   ├── processors/             # Low-Level Media & Format Processors
+│   │   ├── pdf.py              # PDF Rasterization & Page Extraction
+│   │   ├── image.py            # Image BBox Cropping & Resizing
+│   │   ├── video.py            # Video Frame Extraction & Keyframes
+│   │   └── audio.py            # WAV Audio Extraction & Metadata
+│   │
+│   ├── contracts/              # Strict Pydantic Data Contracts & Schemas
+│   │   ├── results.py          # PageResult, DocumentResult, BoundingBox
+│   │   ├── input.py            # ProcessingOptions, DocumentInput
+│   │   └── output.py           # Output Formatting Helpers
+│   │
+│   ├── interfaces/             # External Entry Points
+│   │   ├── api/                # Modular FastAPI Application & Routes
+│   │   ├── cli/                # CLI Runner (`python -m nexusocr`)
+│   │   └── sdk/                # Programmatic Client (`NexusOCRClient`)
+│   │
+│   ├── config.py               # Central Settings & Thresholds
+│   ├── logging.py              # Unified Logging & Stage Diagnostics
+│   └── exceptions.py           # Standardized Exception Hierarchy
 │
-├── frontend/              # Interactive Web Interface
-│   ├── index.html         # Document Upload & Results Dashboard
-│   ├── app.js             # Bounding Box Renderer & Navigation
-│   └── styles.css         # Modern Dark Theme UI Styles
+├── engine/                     # Backward Compatibility Layer
+│   ├── types.py                # Legacy Contract Re-exports
+│   ├── digital_extractor.py    # Legacy PyMuPDF Extractor Re-export
+│   ├── paddle_ocr_engine.py    # Legacy PaddleOCR Engine Re-export
+│   └── docling_engine.py       # Legacy Docling Engine Re-export
 │
-└── tests/                 # Automated Test Suite (pytest)
-    ├── fixtures/          # Sample Test Documents
-    └── test_engine.py     # Unit Tests (0.28s execution)
+├── frontend/                   # Interactive Web Studio
+│   ├── index.html              # Document Upload & Results Dashboard
+│   ├── app.js                  # Bounding Box Renderer & Navigation
+│   └── styles.css              # Modern Dark Theme UI Styles
+│
+└── tests/                      # Automated Regression Test Suite (33 Tests)
+    ├── fixtures/               # Sample Test Documents
+    ├── test_engine.py          # Legacy Engine Unit Tests
+    ├── test_compatibility.py   # 100% Import & Signature Compatibility Tests
+    ├── test_pipeline_architecture.py # Central Pipeline & Stage Lifecycle Tests
+    ├── test_representative_workflows.py # End-to-End Multimodal Workflow Tests
+    ├── test_api_and_cli.py     # FastAPI REST Endpoints & CLI Tests
+    └── test_python310_compat.py # Python 3.10.11 Static AST Verification
 ```
 
 ---

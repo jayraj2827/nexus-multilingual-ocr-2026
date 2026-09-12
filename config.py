@@ -1,27 +1,33 @@
 """
-NexusOCR Flat Configuration File (KISS & Developer-Friendly).
-Centralized constants, endpoints, and thresholds.
+NexusOCR Flat Configuration File (Compatibility Bridge).
+Re-exports centralized constants, paths, and thresholds from nexusocr.config.
 """
 
-import os
-from pathlib import Path
+from __future__ import annotations
+
+import nexusocr.config as _cfg
 
 # Base Paths
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
-UPLOAD_DIR = DATA_DIR / "uploads"
+BASE_DIR = _cfg.BASE_DIR
+DATA_DIR = _cfg.DATA_DIR
+UPLOAD_DIR = _cfg.UPLOAD_DIR
 
-# Ensure upload directory exists
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
-# Image Rasterization DPI (used for scanned page rendering)
-BASE_RASTER_DPI = 150
+# Image Rasterization DPI
+BASE_RASTER_DPI = _cfg.BASE_RASTER_DPI
 
 # Profiler & Trust Gates
-# Pages with native text score >= threshold go through PyMuPDF (<40ms)
-# Pages below threshold fall through to PaddleOCR GPU
-TRUST_SCORE_NATIVE_THRESHOLD = 0.85
+TRUST_SCORE_NATIVE_THRESHOLD = _cfg.TRUST_SCORE_NATIVE_THRESHOLD
 
 # Server Settings
-SERVER_HOST = "127.0.0.1"
-SERVER_PORT = int(os.getenv("PORT", 8000))
+SERVER_HOST = _cfg.SERVER_HOST
+SERVER_PORT = _cfg.SERVER_PORT
+
+__all__ = [
+    "BASE_DIR",
+    "DATA_DIR",
+    "UPLOAD_DIR",
+    "BASE_RASTER_DPI",
+    "TRUST_SCORE_NATIVE_THRESHOLD",
+    "SERVER_HOST",
+    "SERVER_PORT",
+]
