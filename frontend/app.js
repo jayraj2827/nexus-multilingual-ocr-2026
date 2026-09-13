@@ -63,13 +63,28 @@ const toast = document.getElementById("toast");
 // ==========================================================================
 // Initialization & Samples Loading
 // ==========================================================================
+let currentHardwareName = "CPU";
+
 document.addEventListener("DOMContentLoaded", async () => {
     initTabs();
     initUploadEvents();
     initCanvasControls();
     initExportButtons();
+    await loadTelemetry();
     await loadSampleOptions();
 });
+
+async function loadTelemetry() {
+    try {
+        const res = await fetch("/api/health");
+        if (res.ok) {
+            const data = await res.json();
+            currentHardwareName = data.device_name || data.hardware || (data.is_amd_hardware ? "AMD CPU" : "CPU");
+        }
+    } catch (e) {
+        currentHardwareName = "CPU";
+    }
+}
 
 async function loadSampleOptions() {
     try {
@@ -128,25 +143,29 @@ function initUploadEvents() {
         }
     });
 
-    dropzone.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        dropzone.classList.add("dragover");
+    // Multi-target drag & drop so dropping an image anywhere replaces/loads document
+    const dropZones = [dropzone, uploadBar, viewportWrapper];
+    dropZones.forEach(elem => {
+        if (!elem) return;
+        elem.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dropzone.classList.add("dragover");
+        });
+        elem.addEventListener("dragleave", () => {
+            dropzone.classList.remove("dragover");
+        });
+        elem.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropzone.classList.remove("dragover");
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handleSelectedFile(e.dataTransfer.files[0]);
+            }
+        });
     });
 
-    dropzone.addEventListener("dragleave", () => {
-        dropzone.classList.remove("dragover");
-    });
-
-    dropzone.addEventListener("drop", (e) => {
-        e.preventDefault();
-        dropzone.classList.remove("dragover");
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            handleSelectedFile(e.dataTransfer.files[0]);
-        }
-    });
-
-    // 1-Click to trigger native file dialog
+    // 1-Click to trigger native file dialog (reset value so same or new file triggers change)
     changeFileBtn.addEventListener("click", () => {
+        fileInput.value = "";
         fileInput.click();
     });
 
@@ -159,9 +178,24 @@ function initUploadEvents() {
     });
 }
 
+const SUPPORTED_EXTS = [
+    ".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp", ".webp", ".gif",
+    ".docx", ".xlsx", ".csv", ".tsv", ".pptx", ".txt", ".md", ".html", ".htm", ".epub"
+];
+const AUDIO_VIDEO_EXTS = [
+    ".mp3", ".wav", ".aac", ".flac", ".ogg", ".m4a", ".mp4", ".avi", ".mov", ".mkv", ".flv", ".webm"
+];
+
 function handleSelectedFile(file) {
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-        showToast("Please select a PDF document.", true);
+    const ext = "." + file.name.split(".").pop().toLowerCase();
+
+    if (AUDIO_VIDEO_EXTS.includes(ext)) {
+        showToast(`Audio & Video files (${ext}) are not supported. NexusOCR is a document and image intelligence engine.`, true);
+        return;
+    }
+
+    if (!SUPPORTED_EXTS.includes(ext)) {
+        showToast(`Unsupported format '${ext}'. Please upload a document or image (PDF, PNG, JPG, TIFF, DOCX, XLSX, etc.).`, true);
         return;
     }
 
@@ -172,7 +206,7 @@ function handleSelectedFile(file) {
     uploadActionRow.style.display = "flex";
 
     // Instantly show loading state
-    showLoading(`Processing ${file.name}...`, "Extracting with PyMuPDF & PaddleOCR GPU");
+    showLoading(`Processing ${file.name}...`, "Extracting document content and structure");
     uploadAndProcess(file);
 }
 
@@ -273,7 +307,7 @@ function renderCurrentPage() {
     if (page.is_digital) {
         pageTierPill.textContent = `Tier 1: Digital Native (${page.execution_time_ms.toFixed(0)}ms)`;
     } else {
-        pageTierPill.textContent = `Tier 2: PaddleOCR GPU (${page.execution_time_ms.toFixed(0)}ms)`;
+        pageTierPill.textContent = `Tier 2: PaddleOCR [${currentHardwareName}] (${page.execution_time_ms.toFixed(0)}ms)`;
     }
 
     // Load page image

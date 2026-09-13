@@ -15,13 +15,10 @@ import pytest
 from nexusocr.contracts.results import BoundingBox, DocumentResult
 from nexusocr.features.document_ocr.service import DocumentOCRService
 from nexusocr.features.layout.service import LayoutService
-from nexusocr.features.speech.service import SpeechService
 from nexusocr.features.translation.service import TranslationService
 from nexusocr.features.vision.service import VisionService
-from nexusocr.processors.audio import AudioProcessor
 from nexusocr.processors.image import ImageProcessor
 from nexusocr.processors.pdf import PDFProcessor
-from nexusocr.processors.video import VideoProcessor
 
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 
@@ -96,73 +93,6 @@ def test_workflow_vision_service():
 
     preview = service.generate_preview_jpeg(test_img, max_width=50)
     assert len(preview) > 0
-
-
-def test_workflow_video_processor():
-    """Workflow 6: Video frame extraction and keyframe sampling."""
-    with tempfile.NamedTemporaryFile(suffix=".avi", delete=False) as tmp_file:
-        tmp_video_path = tmp_file.name
-
-    try:
-        fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-        out = cv2.VideoWriter(tmp_video_path, fourcc, 10.0, (64, 64))
-        for _ in range(20):
-            frame = np.full((64, 64, 3), 120, dtype=np.uint8)
-            out.write(frame)
-        out.release()
-
-        info = VideoProcessor.get_video_info(tmp_video_path)
-        assert info["fps"] == 10.0
-        assert info["width"] == 64
-        assert info["height"] == 64
-        assert info["frame_count"] == 20
-
-        keyframes = VideoProcessor.sample_keyframes(tmp_video_path, sample_interval_sec=0.5, max_frames=3)
-        assert len(keyframes) > 0
-        assert isinstance(keyframes[0][1], np.ndarray)
-
-    finally:
-        if os.path.exists(tmp_video_path):
-            try:
-                os.remove(tmp_video_path)
-            except Exception:
-                pass
-
-
-def test_workflow_audio_processor_and_speech():
-    """Workflow 7: Audio file parsing and speech transcription."""
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_file:
-        tmp_wav_path = tmp_file.name
-
-    try:
-        # Create a 0.5s mono WAV file with 440Hz sine wave
-        sample_rate = 8000
-        duration_s = 0.5
-        n_samples = int(sample_rate * duration_s)
-
-        with wave.open(tmp_wav_path, "wb") as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)
-            wf.setframerate(sample_rate)
-            data = struct.pack(f"<{n_samples}h", *([0] * n_samples))
-            wf.writeframes(data)
-
-        info = AudioProcessor.get_audio_info(tmp_wav_path)
-        assert info["channels"] == 1.0
-        assert info["sample_rate"] == 8000.0
-        assert abs(info["duration_sec"] - 0.5) < 0.05
-
-        service = SpeechService()
-        transcription = service.transcribe_audio(tmp_wav_path)
-        assert transcription.duration_sec >= 0.4
-        assert len(transcription.text) > 0
-
-    finally:
-        if os.path.exists(tmp_wav_path):
-            try:
-                os.remove(tmp_wav_path)
-            except Exception:
-                pass
 
 
 def test_workflow_translation_service():

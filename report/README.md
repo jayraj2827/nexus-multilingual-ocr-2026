@@ -49,18 +49,18 @@ graph TD
     end
 
     subgraph Features ["3. Domain Features (nexusocr.features)"]
-        OCRFeature["document_ocr/ (2-Tier Routing)"]
+        OCRFeature["document_ocr/ (Multi-Format & Form Extraction)"]
         LayoutFeature["layout/ (Docling & TableFormer)"]
         VisionFeature["vision/ (Inspection & Preview)"]
-        SpeechFeature["speech/ (Audio Transcription)"]
+        BatchFeature["batch.py (Isolated Multi-File Queue)"]
         TransFeature["translation/ (Script Detection & Translate)"]
     end
 
-    subgraph Processors ["4. Reusable Media Processors (nexusocr.processors)"]
+    subgraph Processors ["4. Reusable Document Processors (nexusocr.processors)"]
         ProcPDF["pdf.py (PyMuPDF I/O)"]
-        ProcImg["image.py (Pillow/OpenCV)"]
-        ProcVid["video.py (cv2 Keyframes)"]
-        ProcAud["audio.py (wave Audio)"]
+        ProcImg["image.py (Pillow & Multi-frame TIFF)"]
+        ProcOffice["office.py (Word, Excel, PowerPoint)"]
+        ProcText["text_markup.py (Text, HTML, Markdown, EPUB)"]
     end
 
     subgraph Engines ["5. Hardware & 3rd-Party Engine Adapters (nexusocr.engines)"]
@@ -68,11 +68,11 @@ graph TD
         EngPaddle["ocr/paddleocr.py (RTX 4060 CUDA)"]
         EngDocling["ocr/docling.py"]
         EngVision["vision/base.py"]
-        EngSpeech["speech/base.py"]
         EngTrans["translation/base.py"]
     end
 
     subgraph Contracts ["6. Strict Shared Contracts (nexusocr.contracts)"]
+        FormatContract["formats.py (FormatResolver & Capabilities)"]
         ResultsContract["results.py (DocumentResult, PageResult, BoundingBox)"]
         InputContract["input.py (ProcessingOptions, DocumentInput)"]
     end

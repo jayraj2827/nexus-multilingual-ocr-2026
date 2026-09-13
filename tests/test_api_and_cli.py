@@ -16,13 +16,16 @@ client = TestClient(app)
 
 
 def test_api_health_endpoint():
-    """Verifies GET /api/health returns 200 and schema."""
+    """Verifies GET /api/health returns 200 and schema with hardware detection."""
     response = client.get("/api/health")
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "healthy"
     assert "cuda_available" in data
     assert "gpu_count" in data
+    assert "is_amd_hardware" in data
+    assert "hardware" in data
+    assert "device_type" in data
 
 
 def test_api_samples_endpoint():

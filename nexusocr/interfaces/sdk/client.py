@@ -11,7 +11,10 @@ from typing import Any, Dict, Optional, Union
 import fitz
 
 import nexusocr.config as config
+from nexusocr.contracts.formats import FormatResolver
+from nexusocr.contracts.input import ProcessingOptions
 from nexusocr.contracts.results import DocumentResult
+from nexusocr.features.batch import BatchDocumentService, BatchResult
 from nexusocr.features.document_ocr.service import DocumentOCRService
 from nexusocr.features.vision.models import VisionAnalysisResult
 from nexusocr.features.vision.service import VisionService
@@ -24,10 +27,29 @@ class NexusOCRClient:
     def __init__(self) -> None:
         self.ocr_service = DocumentOCRService()
         self.vision_service = VisionService()
+        self.batch_service = BatchDocumentService(self.ocr_service)
 
-    def process_document(self, file_path: str, max_pages: Optional[int] = None) -> DocumentResult:
-        """Processes a PDF document using 2-Tier OCR Routing."""
+    def process_document(
+        self,
+        file_path: str,
+        max_pages: Optional[int] = None,
+        extract_forms: bool = True
+    ) -> DocumentResult:
+        """Processes any supported document or image (PDF, PNG, JPG, TIFF, DOCX, XLSX, etc.)."""
+        opts = ProcessingOptions(max_pages=max_pages, extract_forms=extract_forms)
+        return self.ocr_service.process_document(file_path, options=opts)
+
+    def process_pdf(self, file_path: str, max_pages: Optional[int] = None) -> DocumentResult:
+        """Processes a PDF document using 2-Tier OCR Routing (PyMuPDF & PaddleOCR GPU)."""
         return self.ocr_service.process_pdf(file_path, max_pages=max_pages)
+
+    def process_batch(self, file_paths: list[str]) -> BatchResult:
+        """Processes multiple document or image files with failure isolation."""
+        return self.batch_service.process_batch(file_paths)
+
+    def get_supported_formats(self) -> list[str]:
+        """Returns the list of supported file extensions."""
+        return FormatResolver.get_supported_extensions()
 
     def inspect_image(self, source: Union[str, Path, bytes]) -> VisionAnalysisResult:
         """Inspects an image and computes visual metrics."""

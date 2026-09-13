@@ -151,8 +151,8 @@ def extract_digital_page(page: fitz.Page, page_num: int) -> Tuple[float, Optiona
         return 0.0, None
 
     printable_ratio = 1.0 - (non_printable / total_chars)
-    density_score = min(1.0, total_chars / 200.0)
-    trust_score = (0.7 * printable_ratio) + (0.3 * density_score)
+    density_score = min(1.0, total_chars / 40.0)
+    trust_score = (0.85 * printable_ratio) + (0.15 * density_score)
 
     if trust_score >= config.TRUST_SCORE_NATIVE_THRESHOLD:
         layout_elements.sort(key=lambda item: item[0])

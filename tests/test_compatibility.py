@@ -119,9 +119,22 @@ def test_new_modular_package_imports():
     from nexusocr import NexusOCRPipeline, NexusOCRClient, DocumentOCRService
     from nexusocr.pipeline import PipelineRunner, PipelineStage, ProcessingContext
     from nexusocr.contracts import ExtractionSource, DocumentResult, ProcessingOptions
-    from nexusocr.processors import PDFProcessor, ImageProcessor, VideoProcessor, AudioProcessor
+    from nexusocr.processors import (
+        PDFProcessor,
+        ImageProcessor,
+        DocxProcessor,
+        SpreadsheetProcessor,
+        PresentationProcessor,
+        TextMarkupProcessor,
+    )
     from nexusocr.engines import PyMuPDFEngine, PaddleOCREngine, DoclingEngine
-    from nexusocr.features import DocumentOCRService, LayoutService, VisionService, SpeechService, TranslationService
+    from nexusocr.features import (
+        DocumentOCRService,
+        LayoutService,
+        VisionService,
+        TranslationService,
+        BatchDocumentService,
+    )
 
     client = NexusOCRClient()
     assert hasattr(client, "process_document")

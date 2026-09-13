@@ -10,7 +10,6 @@ from nexusocr.engines.ocr.pymupdf import PyMuPDFEngine, extract_digital_page
 from nexusocr.engines.ocr.paddleocr import PaddleOCREngine
 from nexusocr.engines.ocr.docling import DoclingEngine
 from nexusocr.engines.vision.base import BaseVisionEngine, DefaultVisionEngine
-from nexusocr.engines.speech.base import BaseSpeechEngine, DefaultSpeechEngine
 from nexusocr.engines.translation.base import BaseTranslationEngine, DefaultTranslationEngine
 
 __all__ = [
@@ -21,8 +20,6 @@ __all__ = [
     "DoclingEngine",
     "BaseVisionEngine",
     "DefaultVisionEngine",
-    "BaseSpeechEngine",
-    "DefaultSpeechEngine",
     "BaseTranslationEngine",
     "DefaultTranslationEngine",
 ]

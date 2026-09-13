@@ -47,7 +47,7 @@ def _stub_modelscope() -> None:
 
 class PaddleOCREngine(BaseOCREngine):
     """
-    PaddleOCR PP-OCRv6 Engine on CUDA (RTX 4060).
+    Adaptive PP-OCRv6 Engine supporting NVIDIA CUDA, AMD ROCm, and optimized CPU execution.
     Lazy-loaded on first use to keep server startup fast.
     """
 
@@ -60,20 +60,29 @@ class PaddleOCREngine(BaseOCREngine):
             return
 
         try:
-            import paddle
-            if not paddle.is_compiled_with_cuda() or paddle.device.cuda.device_count() == 0:
-                print("[NexusOCR] [P3] paddlepaddle-gpu not detected - visual OCR disabled.", flush=True)
-                self._initialized = True
-                return
-
             _stub_modelscope()
             from paddleocr import PaddleOCR
+            from nexusocr.config import detect_hardware
 
-            print("[NexusOCR] [P3] Loading PaddleOCR v3.7 (PP-OCRv6) on RTX 4060...", flush=True)
+            hw = detect_hardware()
+            device_str = hw["device_type"]
+            dev_name = hw["device_name"]
+
+            print(f"[NexusOCR] [P3] Loading PaddleOCR v3.7 on {dev_name}...", flush=True)
             t0 = time.perf_counter()
-            self._ocr = PaddleOCR(lang="en", device="gpu")
+            if device_str == "gpu":
+                self._ocr = PaddleOCR(lang="en", device="gpu")
+            else:
+                self._ocr = PaddleOCR(
+                    lang="en",
+                    device="cpu",
+                    enable_mkldnn=False,
+                    use_doc_orientation_classify=False,
+                    use_doc_unwarping=False,
+                    use_textline_orientation=False,
+                )
             self._initialized = True
-            print(f"[NexusOCR] [P3] PaddleOCR GPU ready in {(time.perf_counter()-t0)*1000:.0f}ms [OK]", flush=True)
+            print(f"[NexusOCR] [P3] PaddleOCR ready on {dev_name} in {(time.perf_counter()-t0)*1000:.0f}ms [OK]", flush=True)
 
         except Exception as e:
             self._initialized = True
@@ -81,14 +90,15 @@ class PaddleOCREngine(BaseOCREngine):
 
     def is_available(self) -> bool:
         try:
+            _stub_modelscope()
             import paddle
-            return bool(paddle.is_compiled_with_cuda())
+            return True
         except ImportError:
             return False
 
     def process_page_image(self, page_img: np.ndarray, page_num: int) -> Optional[PageResult]:
         """
-        Extracts text from a scanned/image page using PaddleOCR on GPU.
+        Extracts text from a scanned/image page using PaddleOCR on GPU or CPU.
         Returns a PageResult with clean Markdown text and bounding boxes.
         """
         if page_img is None or page_img.size == 0:
@@ -103,7 +113,7 @@ class PaddleOCREngine(BaseOCREngine):
         start = time.perf_counter()
         h, w = page_img.shape[:2]
 
-        print(f"[NexusOCR] [P3: PaddleOCR GPU] Page {page_num} ({w}x{h})...", flush=True)
+        print(f"[NexusOCR] [P3: PaddleOCR] Page {page_num} ({w}x{h})...", flush=True)
 
         try:
             result = self._ocr.predict(page_img)
@@ -122,15 +132,11 @@ class PaddleOCREngine(BaseOCREngine):
                 print(f"[NexusOCR] [P3] No text detected on Page {page_num}.", flush=True)
                 return None
 
-            regions: List[ExtractedRegion] = []
-            clean_lines = []
-
+            raw_items = []
             for idx, (t, s) in enumerate(zip(texts, scores or [1.0] * len(texts))):
                 t_str = t.strip()
-                if not t_str or (s is not None and s < 0.5):
+                if not t_str or (s is not None and s < 0.45):
                     continue
-
-                clean_lines.append(t_str)
 
                 # Extract bounding box from rec_boxes or dt_polys
                 box_coords = None
@@ -147,26 +153,55 @@ class PaddleOCREngine(BaseOCREngine):
                         ymax = float(np.max(pts[:, 1]))
                         box_coords = [xmin, ymin, xmax, ymax]
 
-                if box_coords:
-                    regions.append(ExtractedRegion(
-                        id=f"p{page_num}_ocr_{idx}",
-                        bbox=BoundingBox(
-                            xmin=box_coords[0],
-                            ymin=box_coords[1],
-                            xmax=box_coords[2],
-                            ymax=box_coords[3]
-                        ),
-                        text=t_str,
-                        category="text",
-                        confidence=float(s) if s is not None else 1.0,
-                        source=ExtractionSource.DOCLING_LAYOUT
-                    ))
+                if not box_coords:
+                    box_coords = [0.0, float(idx * 20), float(w), float(idx * 20 + 18)]
 
-            markdown_text = "\n\n".join(clean_lines)
+                raw_items.append((box_coords, t_str, float(s) if s is not None else 1.0))
+
+            if not raw_items:
+                return None
+
+            # Sort in human reading order: top-to-bottom line clusters, left-to-right
+            # Line cluster threshold ~14px or 2.5% of height
+            line_cluster_h = max(12.0, h * 0.02)
+            raw_items.sort(key=lambda item: (round(item[0][1] / line_cluster_h) * line_cluster_h, item[0][0]))
+
+            regions: List[ExtractedRegion] = []
+            formatted_lines = []
+
+            # Determine median line height to detect headings
+            heights = [(b[3] - b[1]) for b, _, _ in raw_items if (b[3] - b[1]) > 5]
+            median_h = float(np.median(heights)) if heights else 15.0
+
+            for r_idx, (box_coords, t_str, score) in enumerate(raw_items):
+                bh = box_coords[3] - box_coords[1]
+                is_heading = (bh >= median_h * 1.35 and len(t_str) < 80) or (t_str.isupper() and len(t_str) < 60)
+                category = "header" if is_heading else "text"
+
+                regions.append(ExtractedRegion(
+                    id=f"p{page_num}_ocr_{r_idx+1}",
+                    bbox=BoundingBox(
+                        xmin=box_coords[0],
+                        ymin=box_coords[1],
+                        xmax=box_coords[2],
+                        ymax=box_coords[3]
+                    ),
+                    text=t_str,
+                    category=category,
+                    confidence=score,
+                    source=ExtractionSource.DOCLING_LAYOUT
+                ))
+
+                if is_heading:
+                    formatted_lines.append(f"### {t_str}")
+                else:
+                    formatted_lines.append(t_str)
+
+            markdown_text = "\n\n".join(formatted_lines)
 
             print(
-                f"[NexusOCR] [P3: PaddleOCR GPU] Page {page_num} - "
-                f"{len(clean_lines)} lines, {len(regions)} boxes in {elapsed_ms:.1f}ms [OK]",
+                f"[NexusOCR] [P3: PaddleOCR] Page {page_num} - "
+                f"{len(formatted_lines)} lines, {len(regions)} boxes in {elapsed_ms:.1f}ms [OK]",
                 flush=True
             )
 

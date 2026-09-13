@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 class ExtractionSource(str, Enum):
     DIGITAL_NATIVE = "digital_native"  # PyMuPDF fast text & table layer (<10ms)
     DOCLING_LAYOUT = "docling_layout"  # IBM Docling Layout & TableFormer
+    PADDLE_OCR = "paddle_ocr"          # PaddleOCR Neural Text Detection & Recognition
     OLLAMA_VLM = "ollama_vlm"          # Local Ollama Vision VLM (Qwen2.5-VL / Gemma)
 
 
@@ -65,6 +66,7 @@ class PageResult(BaseModel):
 class DocumentResult(BaseModel):
     file_name: str
     total_pages: int
+    format: Optional[str] = None
     pages: List[PageResult] = Field(default_factory=list)
     full_markdown: str = ""
     structured_json: Dict[str, Any] = Field(default_factory=dict)

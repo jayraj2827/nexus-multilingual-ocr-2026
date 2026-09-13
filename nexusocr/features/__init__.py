@@ -5,21 +5,21 @@ Contains domain-specific features: Document OCR, Layout, Vision, Speech, Transla
 
 from __future__ import annotations
 
-from nexusocr.features.document_ocr import DocumentOCRService, DocumentOCRStage
+from nexusocr.features.document_ocr import DocumentOCRService, DocumentOCRStage, FormDataExtractor
 from nexusocr.features.layout import LayoutService, LayoutStage
 from nexusocr.features.vision import VisionService, VisionStage
-from nexusocr.features.speech import SpeechService, SpeechStage
 from nexusocr.features.translation import TranslationService, TranslationStage
+from nexusocr.features.batch import BatchDocumentService
 
 __all__ = [
     "DocumentOCRService",
     "DocumentOCRStage",
+    "FormDataExtractor",
     "LayoutService",
     "LayoutStage",
     "VisionService",
     "VisionStage",
-    "SpeechService",
-    "SpeechStage",
     "TranslationService",
     "TranslationStage",
+    "BatchDocumentService",
 ]

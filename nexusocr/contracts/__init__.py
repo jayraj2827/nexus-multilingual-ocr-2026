@@ -23,6 +23,12 @@ from nexusocr.contracts.output import (
     PipelineSummary,
     format_document_json,
 )
+from nexusocr.contracts.formats import (
+    FormatCategory,
+    ExtractionMode,
+    FormatCapability,
+    FormatResolver,
+)
 
 __all__ = [
     "ExtractionSource",
@@ -37,4 +43,8 @@ __all__ = [
     "StageStatus",
     "PipelineSummary",
     "format_document_json",
+    "FormatCategory",
+    "ExtractionMode",
+    "FormatCapability",
+    "FormatResolver",
 ]

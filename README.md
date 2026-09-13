@@ -58,10 +58,13 @@ Through iterative profiling on our target hardware (**NVIDIA RTX 4060 8GB VRAM /
 ## ✨ Key Features
 
 - **⚡ Fast Tiered Routing:** Digital pages bypass OCR completely via PyMuPDF in **<40ms**, while scanned/raster pages route to GPU-accelerated neural OCR.
+- **📄 Broad Multi-Format Support:** First-class processing for **PDF, Raster & Multi-page Images (PNG, JPG, TIFF, BMP, WebP), Office documents (DOCX, XLSX, PPTX), Data files (CSV), and Text/Markup (TXT, HTML, EPUB)**.
 - **🌐 Multilingual & Script-Aware:** Robust extraction across **English, Gujarati (ગુજરાતી), Hindi (हिन्दी), and Devanagari scripts**, including complex conjunct ligatures (જોડણી).
 - **🚀 CUDA GPU Acceleration:** Backed by `paddlepaddle-gpu` running on NVIDIA CUDA (RTX 4060 / Ada Lovelace architecture) for sub-second visual inference.
-- **📊 Table & Mathematical Formulas:** Reconstructs financial balance sheets, multi-column accounting tables, percentages, and arithmetic calculations.
-- **🖥️ Interactive UI:** Built-in dashboard with real-time PDF page navigation, colored bounding box overlays, markdown viewer, and JSON download.
+- **📊 Table & Form Intelligence:** Reconstructs complex tables, balance sheets, and key-value form entities (amounts, dates, invoice numbers).
+- **📦 Resilient Batch Processing:** Built-in batch engine with failure isolation so that unreadable files never halt a multi-document workflow.
+- **🛡️ Strict Media Rejection:** Explicitly rejects unsupported audio and video streams with descriptive feedback.
+- **🖥️ Interactive UI:** Built-in dashboard with real-time document navigation, colored bounding box overlays, markdown viewer, and JSON download.
 - **🔒 100% Offline & Private:** Zero external cloud API calls — runs entirely on local compute.
 
 ---
@@ -84,25 +87,25 @@ NexusOCR/
 │   │   └── execution.py        # Stage Execution Boundaries & Metrics
 │   │
 │   ├── features/               # Modular Feature Services
-│   │   ├── document_ocr/       # 2-Tier OCR Routing Service & Stage
+│   │   ├── document_ocr/       # Multi-Format OCR & Document Intelligence
 │   │   ├── layout/             # Deep Document Layout & Table Service
 │   │   ├── vision/             # Computer Vision & Preview Service
-│   │   ├── speech/             # Speech Audio Transcription Service
-│   │   └── translation/        # Multilingual Translation Service
+│   │   ├── translation/        # Multilingual Translation Service
+│   │   └── batch.py            # Isolated Multi-File Batch Processor
 │   │
 │   ├── engines/                # External Library Adapters
 │   │   ├── ocr/                # PaddleOCR, PyMuPDF, and Docling Adapters
 │   │   ├── vision/             # Vision Analyzer Adapters
-│   │   ├── speech/             # Speech Engine Adapters
 │   │   └── translation/        # Script & Translation Engine Adapters
 │   │
-│   ├── processors/             # Low-Level Media & Format Processors
+│   ├── processors/             # Low-Level Document & Image Processors
 │   │   ├── pdf.py              # PDF Rasterization & Page Extraction
-│   │   ├── image.py            # Image BBox Cropping & Resizing
-│   │   ├── video.py            # Video Frame Extraction & Keyframes
-│   │   └── audio.py            # WAV Audio Extraction & Metadata
+│   │   ├── image.py            # Image BBox Cropping, Resizing & Multi-frame TIFF
+│   │   ├── office.py           # Word (DOCX), Excel (XLSX/CSV), PowerPoint (PPTX)
+│   │   └── text_markup.py      # Plain Text, Markdown, HTML, XML & EPUB
 │   │
 │   ├── contracts/              # Strict Pydantic Data Contracts & Schemas
+│   │   ├── formats.py          # Format Registry, Capabilities & Validation
 │   │   ├── results.py          # PageResult, DocumentResult, BoundingBox
 │   │   ├── input.py            # ProcessingOptions, DocumentInput
 │   │   └── output.py           # Output Formatting Helpers
@@ -124,15 +127,17 @@ NexusOCR/
 │
 ├── frontend/                   # Interactive Web Studio
 │   ├── index.html              # Document Upload & Results Dashboard
-│   ├── app.js                  # Bounding Box Renderer & Navigation
+│   ├── app.js                  # Multi-Format Validation & Bounding Box View
 │   └── styles.css              # Modern Dark Theme UI Styles
 │
-└── tests/                      # Automated Regression Test Suite (33 Tests)
+└── tests/                      # Automated Regression Test Suite (58+ Tests)
     ├── fixtures/               # Sample Test Documents
     ├── test_engine.py          # Legacy Engine Unit Tests
     ├── test_compatibility.py   # 100% Import & Signature Compatibility Tests
     ├── test_pipeline_architecture.py # Central Pipeline & Stage Lifecycle Tests
-    ├── test_representative_workflows.py # End-to-End Multimodal Workflow Tests
+    ├── test_representative_workflows.py # Document Workflow Tests
+    ├── test_unsupported_media.py # Audio/Video Rejection Verification Tests
+    ├── test_multiformat_docs.py # Multi-format Document & Batch Tests
     ├── test_api_and_cli.py     # FastAPI REST Endpoints & CLI Tests
     └── test_python310_compat.py # Python 3.10.11 Static AST Verification
 ```

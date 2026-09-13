@@ -12,6 +12,9 @@ from pathlib import Path
 from typing import List, Optional
 
 import nexusocr.config as config
+from nexusocr.contracts.formats import FormatResolver
+from nexusocr.contracts.input import ProcessingOptions
+from nexusocr.exceptions import UnsupportedFormatError
 from nexusocr.features.document_ocr.service import DocumentOCRService
 from nexusocr.logging import log
 
@@ -25,11 +28,14 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", help="Available subcommands")
 
     # Command: process
-    proc_parser = subparsers.add_parser("process", help="Process a document through the OCR pipeline")
-    proc_parser.add_argument("file", type=str, help="Path to the PDF document to extract")
+    proc_parser = subparsers.add_parser("process", help="Process a document or image through the OCR pipeline")
+    proc_parser.add_argument("file", type=str, help="Path to the document or image to extract (PDF, PNG, JPG, TIFF, DOCX, XLSX, etc.)")
     proc_parser.add_argument("--max-pages", type=int, default=None, help="Maximum number of pages to process")
     proc_parser.add_argument("--format", choices=["markdown", "json"], default="markdown", help="Output format")
     proc_parser.add_argument("--output", "-o", type=str, default=None, help="File to write output to")
+
+    # Command: formats
+    subparsers.add_parser("formats", help="List all supported document and image formats")
 
     # Command: health
     subparsers.add_parser("health", help="Check OCR and GPU engine availability")
@@ -50,8 +56,22 @@ def handle_process(args: argparse.Namespace) -> int:
         print(f"Error: File not found: {file_path}", file=sys.stderr)
         return 1
 
+    try:
+        FormatResolver.validate_file(file_path)
+    except UnsupportedFormatError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
     service = DocumentOCRService()
-    result = service.process_pdf(file_path, max_pages=args.max_pages)
+    opts = ProcessingOptions(max_pages=args.max_pages)
+    try:
+        result = service.process_document(file_path, options=opts)
+    except UnsupportedFormatError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"Error during processing: {e}", file=sys.stderr)
+        return 1
 
     if args.format == "json":
         output_content = json.dumps(result.model_dump(), indent=2)
@@ -67,23 +87,30 @@ def handle_process(args: argparse.Namespace) -> int:
     return 0
 
 
-def handle_health(args: argparse.Namespace) -> int:
-    """Prints GPU and engine diagnostic information."""
-    try:
-        import paddle
-        cuda_avail = bool(paddle.is_compiled_with_cuda())
-        gpu_count = paddle.device.cuda.device_count() if cuda_avail else 0
-        gpu_name = paddle.device.cuda.get_device_name(0) if (cuda_avail and gpu_count > 0) else "CPU Only"
-    except Exception:
-        cuda_avail = False
-        gpu_count = 0
-        gpu_name = "CPU Only"
+def handle_formats(args: argparse.Namespace) -> int:
+    """Prints supported document formats and technical capabilities."""
+    supported = FormatResolver.get_supported_extensions()
+    print("NexusOCR Supported Document & Image Formats:")
+    print("=" * 55)
+    for ext in supported:
+        cap = FormatResolver.resolve_capability(f"sample{ext}")
+        print(f"  {ext:<8} | {cap.format_name:<30} | {cap.extraction_mode.value}")
+    print("=" * 55)
+    print("Note: Audio and Video formats are NOT supported.")
+    return 0
 
+
+def handle_health(args: argparse.Namespace) -> int:
+    """Prints hardware and engine diagnostic information."""
+    hw = config.detect_hardware()
     status = {
         "status": "healthy",
-        "cuda_available": cuda_avail,
-        "gpu_count": gpu_count,
-        "gpu_name": gpu_name,
+        "hardware": hw["device_name"],
+        "device_type": hw["device_type"],
+        "is_amd_hardware": hw["is_amd_hardware"],
+        "cuda_available": hw["cuda_available"],
+        "gpu_count": hw["gpu_count"],
+        "gpu_name": hw["device_name"],
     }
     print(json.dumps(status, indent=2))
     return 0
@@ -108,6 +135,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if args.command == "process":
         return handle_process(args)
+    elif args.command == "formats":
+        return handle_formats(args)
     elif args.command == "health":
         return handle_health(args)
     elif args.command == "serve":

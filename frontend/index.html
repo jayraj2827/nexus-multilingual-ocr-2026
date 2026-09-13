@@ -60,7 +60,7 @@
                 <!-- Collapsible Upload Strip -->
                 <div class="upload-zone" id="uploadBar">
                     <div class="drop-area" id="dropzone">
-                        <input type="file" id="fileInput" accept=".pdf" class="file-input">
+                        <input type="file" id="fileInput" accept="*/*" class="file-input">
                         <div class="drop-prompt">
                             <svg class="upload-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -68,8 +68,8 @@
                                 <line x1="12" y1="3" x2="12" y2="15"></line>
                             </svg>
                             <div class="prompt-text">
-                                <span class="primary-prompt">Drop PDF here, or <span class="browse-link">browse</span></span>
-                                <span class="sub-prompt">English, Gujarati, Hindi, Tables & Scans</span>
+                                <span class="primary-prompt">Drop Document or Image here, or <span class="browse-link">browse</span></span>
+                                <span class="sub-prompt">PDF, Images (PNG, JPG, TIFF), Word, Excel, PPT, Tables & Forms</span>
                             </div>
                         </div>
                     </div>
@@ -81,7 +81,7 @@
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                 <polyline points="14 2 14 8 20 8"></polyline>
                             </svg>
-                            <span class="file-name" id="pillFileName">document.pdf</span>
+                            <span class="file-name" id="pillFileName">document</span>
                             <span class="file-size" id="pillFileSize">0 KB</span>
                         </div>
                         <div class="file-actions">
@@ -134,7 +134,7 @@
                             <line x1="9" y1="21" x2="9" y2="9"></line>
                         </svg>
                         <p class="placeholder-title">No document loaded</p>
-                        <p class="placeholder-desc">Upload a PDF or select a sample above to view extraction</p>
+                        <p class="placeholder-desc">Upload any document or image (PDF, PNG, JPG, TIFF, Word, Excel, etc.) or select a sample above to view extraction</p>
                     </div>
                     <div class="canvas-mount" id="canvasStage" style="display: none;">
                         <img id="pageImage" class="rendered-page" alt="Document Page">
