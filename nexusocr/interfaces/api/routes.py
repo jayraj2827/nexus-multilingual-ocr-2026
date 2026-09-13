@@ -60,31 +60,53 @@ async def get_supported_formats():
 @router.get("/api/samples")
 async def list_sample_documents():
     """Returns available demo sample documents for 1-click evaluation."""
+    curated_presets = [
+        {
+            "name": "test_digital_english.pdf",
+            "display": "Digital English Report",
+            "type": "Digital PDF",
+            "tier": "Tier 1 Fast",
+        },
+        {
+            "name": "test_hindi_devanagari.pdf",
+            "display": "Hindi & Devanagari Script",
+            "type": "Multilingual PDF",
+            "tier": "Tier 1 Multilingual",
+        },
+        {
+            "name": "test_tables_financial.pdf",
+            "display": "Financial Statement & Grid",
+            "type": "Tabular PDF",
+            "tier": "Tier 1 Grid",
+        },
+        {
+            "name": "01_multilingual.pdf",
+            "display": "Gujarati & English Document",
+            "type": "Multilingual PDF",
+            "tier": "Tier 1 Dual-Script",
+        },
+        {
+            "name": "Autonomous_Delivery_Robot_System_Design_Report.docx",
+            "display": "System Design Architecture",
+            "type": "Office Word",
+            "tier": "Office Doc",
+        },
+        {
+            "name": "award.png",
+            "display": "Certificate Raster Badge",
+            "type": "Scanned Image",
+            "tier": "Tier 2 Neural",
+        },
+    ]
     samples = []
-    fixtures_dir = config.FIXTURES_DIR
-    if fixtures_dir.exists():
-        for f in fixtures_dir.glob("*.pdf"):
-            samples.append({
-                "name": f.name,
-                "display": f.stem.replace("_", " ").title(),
-                "type": "fixture",
-            })
-
-    demo_aliases = {
-        "12th guj med QP Acc.pdf": "Saheb Tuition 12th Accounts (Printed Gujarati)",
-        "12th guj med Answersheet Stat.pdf": "12th Board Answersheet (Handwritten Gujarati)",
-        "CBSE_Class10_MathBasicQP.pdf": "CBSE Class 10 Math Exam (Math & Tables)",
-        "Multilingual Document OCR  Extraction Pipeline.pdf": "Multilingual Hackathon Deck (13 Pages)",
-        "MCA Last Year Marksheet.pdf": "University Marksheet (Dense Financial Table)",
-    }
-    for filename, display_name in demo_aliases.items():
-        p = config.UPLOAD_DIR / filename
-        if p.exists():
-            samples.append({
-                "name": filename,
-                "display": display_name,
-                "type": "demo",
-            })
+    seen = set()
+    for item in curated_presets:
+        name = item["name"]
+        p_up = config.UPLOAD_DIR / name
+        p_fix = config.FIXTURES_DIR / name
+        if (p_up.exists() or p_fix.exists()) and name not in seen:
+            seen.add(name)
+            samples.append(item)
 
     return JSONResponse(content=samples)
 
@@ -99,6 +121,15 @@ async def process_sample_document(filename: str):
             target_path = fixture_path
         else:
             raise HTTPException(status_code=404, detail=f"Sample file '{filename}' not found.")
+
+    # Ensure present in UPLOAD_DIR for preview rendering
+    upload_dest = config.UPLOAD_DIR / filename
+    if not upload_dest.exists() and target_path != upload_dest:
+        try:
+            shutil.copyfile(target_path, upload_dest)
+            target_path = upload_dest
+        except Exception:
+            pass
 
     try:
         FormatResolver.validate_file(str(target_path))
@@ -208,8 +239,41 @@ async def get_page_image(filename: str, page_num: int):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to render image preview: {e}")
 
-    # For other formats without direct page rendering (e.g. text, docx without headless word)
-    # Generate a lightweight placeholder JPEG
+    # Handle Word documents (.docx) preview rendering
+    if ext == ".docx":
+        try:
+            import docx
+            from PIL import ImageDraw
+            doc = docx.Document(str(file_path))
+            img = Image.new("RGB", (800, 1100), color=(255, 255, 255))
+            draw = ImageDraw.Draw(img)
+            draw.rectangle([(20, 20), (780, 1080)], outline=(210, 210, 210), width=1)
+            draw.rectangle([(40, 40), (760, 95)], fill=(27, 73, 148))
+            draw.text((55, 52), filename.replace("_", " ")[:40], fill=(255, 255, 255))
+            draw.text((55, 74), "MICROSOFT WORD DOCUMENT PREVIEW", fill=(242, 183, 5))
+
+            y = 120
+            for p in doc.paragraphs[:28]:
+                txt = p.text.strip()
+                if not txt:
+                    y += 8
+                    continue
+                if len(txt) > 85:
+                    txt = txt[:85] + "..."
+                is_head = txt.startswith(("1.", "2.", "3.", "4.", "5.", "6.", "7.", "8.", "Reasons", "Selected", "System", "Microkernel"))
+                color = (18, 19, 22) if is_head else (70, 75, 85)
+                draw.text((50, y), txt, fill=color)
+                y += 24 if is_head else 18
+                if y > 1020:
+                    break
+
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=90)
+            return Response(content=buf.getvalue(), media_type="image/jpeg")
+        except Exception:
+            pass
+
+    # For other formats without direct page rendering
     placeholder = Image.new("RGB", (800, 1100), color=(248, 249, 250))
     buf = io.BytesIO()
     placeholder.save(buf, format="JPEG")
