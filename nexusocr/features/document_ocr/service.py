@@ -36,6 +36,17 @@ from nexusocr.processors.office import (
 from nexusocr.processors.text_markup import TextMarkupProcessor
 
 
+def _sanitize_for_json(val: Any) -> Any:
+    """Recursively removes raw bytes to prevent UTF-8 decode errors during JSON serialization."""
+    if isinstance(val, (bytes, bytearray)):
+        return f"<{len(val)} bytes>"
+    if isinstance(val, dict):
+        return {k: _sanitize_for_json(v) for k, v in val.items() if k != "embedded_images"}
+    if isinstance(val, list):
+        return [_sanitize_for_json(v) for v in val]
+    return val
+
+
 class DocumentOCRService:
     """
     End-to-End Document Intelligence Service.
@@ -500,6 +511,7 @@ class DocumentOCRService:
         return DocumentResult(
             file_name=file_name,
             total_pages=1,
+            format="DOCX",
             pages=[page],
             full_markdown=full_md,
             structured_json={
@@ -646,18 +658,29 @@ class DocumentOCRService:
 
         form_data = FormDataExtractor.extract_form_data(full_md)
 
+        serialized_slides = []
+        for s in data.get("slides", []):
+            serialized_slides.append({
+                "slide_number": s.get("slide_number", 1),
+                "title": s.get("title", ""),
+                "text": s.get("text", ""),
+                "markdown": s.get("markdown", ""),
+                "embedded_images_count": len(s.get("embedded_images", [])),
+            })
+
         return DocumentResult(
             file_name=file_name,
             total_pages=len(pages),
+            format="PRESENTATION",
             pages=pages,
             full_markdown=full_md,
-            structured_json={
+            structured_json=_sanitize_for_json({
                 "file": file_name,
                 "total_pages": len(pages),
                 "format": "PRESENTATION",
-                "slides": data.get("slides", []),
+                "slides": serialized_slides,
                 "form_data": form_data,
-            },
+            }),
             average_trust_score=1.0,
             total_execution_time_ms=total_ms,
         )

@@ -95,19 +95,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     initCanvasControls();
     initExportButtons();
     initTestingSuite();
-    initLandingOutputShowcase();
     initAccuracyConditionSwitch();
     initPipelineInspector();
+    initDeveloperHub();
     initScrollAnimations();
     await loadTelemetry();
     await loadSampleOptions();
-    handleHashNavigation();
+    handleRouteNavigation();
 });
 
 // ==========================================================================
-// View Routing & Navigation (Overview / Studio / Testing)
+// View Routing & Navigation (Clean Paths: /overview and /studio)
 // ==========================================================================
-function switchView(viewName) {
+function switchView(viewName, updateUrl = true) {
     if (viewName === "overview" || viewName === "landing") {
         viewName = "landing";
     }
@@ -122,8 +122,8 @@ function switchView(viewName) {
         document.querySelectorAll(".view-container").forEach(c => {
             c.classList.toggle("active", c.id === "view-studio");
         });
-        if (window.location.hash !== "#studio") {
-            window.history.replaceState(null, "", "#studio");
+        if (updateUrl && (window.location.pathname !== "/studio" || window.location.hash)) {
+            window.history.pushState({ view: "studio" }, "", "/studio");
         }
     } else {
         // Overview Landing View
@@ -133,8 +133,8 @@ function switchView(viewName) {
         document.querySelectorAll(".view-container").forEach(c => {
             c.classList.toggle("active", c.id === "view-landing");
         });
-        if (window.location.hash !== "#overview" && window.location.hash !== "#landing") {
-            window.history.replaceState(null, "", "#overview");
+        if (updateUrl && (window.location.pathname !== "/overview" && window.location.pathname !== "/" || window.location.hash)) {
+            window.history.pushState({ view: "landing" }, "", "/overview");
         }
     }
 
@@ -154,18 +154,32 @@ function initViewNavigation() {
     if (showcaseExploreBtn) showcaseExploreBtn.addEventListener("click", () => switchView("studio"));
     if (ctaLaunchBtn) ctaLaunchBtn.addEventListener("click", () => switchView("studio"));
 
-    window.addEventListener("hashchange", handleHashNavigation);
+    // Handle forward/backward browser navigation
+    window.addEventListener("popstate", handleRouteNavigation);
+
+    // Support legacy hash links if user enters #studio or #overview and clean URL
+    window.addEventListener("hashchange", handleRouteNavigation);
 }
 
-function handleHashNavigation() {
-    const hash = window.location.hash.replace("#", "");
-    if (hash === "testing" || hash === "diagnostics" || hash === "studio") {
-        switchView("studio");
+function handleRouteNavigation() {
+    const path = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.replace("#", "").toLowerCase();
+
+    if (path.includes("studio") || hash === "studio" || hash === "testing" || hash === "diagnostics") {
+        switchView("studio", false);
         if (hash === "diagnostics" || hash === "testing") {
             switchTab("diagnostics");
         }
+        // Clean URL if hash was used
+        if (window.location.hash) {
+            window.history.replaceState({ view: "studio" }, "", "/studio");
+        }
     } else {
-        switchView("landing");
+        switchView("landing", false);
+        // Clean URL if hash was used
+        if (window.location.hash && (hash === "overview" || hash === "landing")) {
+            window.history.replaceState({ view: "landing" }, "", "/overview");
+        }
     }
 }
 
@@ -192,20 +206,68 @@ async function loadTelemetry() {
 }
 
 // ==========================================================================
-// Preset Sample Documents
+// Preset Sample Documents & Upload History Management
 // ==========================================================================
+let sampleOptGroup = null;
+let uploadedOptGroup = null;
+
+function getStoredUploads() {
+    try {
+        return JSON.parse(sessionStorage.getItem("nexus_uploaded_list") || "[]");
+    } catch {
+        return [];
+    }
+}
+
+function saveStoredUpload(item) {
+    try {
+        const list = getStoredUploads();
+        const existingIdx = list.findIndex(u => u.name === item.name);
+        if (existingIdx >= 0) {
+            list[existingIdx] = item;
+        } else {
+            list.unshift(item);
+        }
+        sessionStorage.setItem("nexus_uploaded_list", JSON.stringify(list));
+    } catch {}
+}
+
 async function loadSampleOptions() {
     try {
         const res = await fetch("/api/samples");
         if (res.ok) {
             const samples = await res.json();
             sampleSelect.innerHTML = '<option value="">Load Preset Document...</option>';
+
+            sampleOptGroup = document.createElement("optgroup");
+            sampleOptGroup.label = "Sample Documents (Starter PDFs)";
+            sampleOptGroup.id = "sampleOptGroup";
             samples.forEach(s => {
                 const opt = document.createElement("option");
                 opt.value = s.name;
                 opt.textContent = `${s.display} (${s.tier || s.type})`;
-                sampleSelect.appendChild(opt);
+                sampleOptGroup.appendChild(opt);
             });
+            sampleSelect.appendChild(sampleOptGroup);
+
+            uploadedOptGroup = document.createElement("optgroup");
+            uploadedOptGroup.label = "Uploaded Documents";
+            uploadedOptGroup.id = "uploadedOptGroup";
+
+            // Restore any uploaded documents from this session
+            const stored = getStoredUploads();
+            if (stored && stored.length > 0) {
+                stored.forEach(item => {
+                    const opt = document.createElement("option");
+                    opt.value = item.name;
+                    opt.textContent = `${item.display || item.name} (Uploaded${item.tier ? " · " + item.tier : ""})`;
+                    uploadedOptGroup.appendChild(opt);
+                });
+                sampleSelect.appendChild(uploadedOptGroup);
+            } else {
+                uploadedOptGroup.style.display = "none";
+                sampleSelect.appendChild(uploadedOptGroup);
+            }
 
             // Populate benchmark suite in Diagnostics tab
             populateBenchmarkTable(samples);
@@ -219,6 +281,42 @@ async function loadSampleOptions() {
         if (!val) return;
         switchView("studio");
         await processSampleFile(val);
+    });
+}
+
+function appendToPresetDropdown(filename, displayName = null, tier = null) {
+    if (!sampleSelect) return;
+
+    if (!uploadedOptGroup) {
+        uploadedOptGroup = document.getElementById("uploadedOptGroup");
+        if (!uploadedOptGroup) {
+            uploadedOptGroup = document.createElement("optgroup");
+            uploadedOptGroup.label = "Uploaded Documents";
+            uploadedOptGroup.id = "uploadedOptGroup";
+            sampleSelect.appendChild(uploadedOptGroup);
+        }
+    }
+    uploadedOptGroup.style.display = "";
+
+    const label = displayName || filename;
+    const existing = sampleSelect.querySelector(`option[value="${CSS.escape(filename)}"]`);
+    if (existing) {
+        if (tier && !existing.textContent.includes(tier)) {
+            existing.textContent = `${label} (Uploaded · ${tier})`;
+        }
+        sampleSelect.value = filename;
+    } else {
+        const opt = document.createElement("option");
+        opt.value = filename;
+        opt.textContent = `${label} (Uploaded${tier ? " · " + tier : ""})`;
+        uploadedOptGroup.appendChild(opt);
+        sampleSelect.value = filename;
+    }
+
+    saveStoredUpload({
+        name: filename,
+        display: label,
+        tier: tier || null
     });
 }
 
@@ -241,7 +339,7 @@ function populateBenchmarkTable(samples) {
 }
 
 // ==========================================================================
-// Loading States
+// Loading States (Scoped Exclusively to Left Pane)
 // ==========================================================================
 function showLoading(title = "Processing document...", subtitle = "Running tiered extraction") {
     if (loadingOverlay) {
@@ -249,18 +347,12 @@ function showLoading(title = "Processing document...", subtitle = "Running tiere
         loadingSubtitle.textContent = subtitle;
         loadingOverlay.style.display = "flex";
     }
-    if (markdownRendered) markdownRendered.style.opacity = "0.35";
-    if (jsonCodeViewer) jsonCodeViewer.style.opacity = "0.35";
-    if (rawTextViewer) rawTextViewer.style.opacity = "0.35";
 }
 
 function hideLoading() {
     if (loadingOverlay) {
         loadingOverlay.style.display = "none";
     }
-    if (markdownRendered) markdownRendered.style.opacity = "1";
-    if (jsonCodeViewer) jsonCodeViewer.style.opacity = "1";
-    if (rawTextViewer) rawTextViewer.style.opacity = "1";
 }
 
 // ==========================================================================
@@ -332,6 +424,9 @@ function handleSelectedFile(file) {
     dropzone.style.display = "none";
     uploadActionRow.style.display = "flex";
 
+    // Dynamically append new uploaded document to the header dropdown
+    appendToPresetDropdown(file.name, file.name);
+
     switchView("studio");
     showLoading(`Processing ${file.name}...`, "Extracting document structure and content");
     uploadAndProcess(file);
@@ -367,13 +462,18 @@ async function uploadAndProcess(file) {
 
 async function processSampleFile(filename) {
     pillFileName.textContent = filename;
-    pillFileSize.textContent = "Preset Fixture";
+    pillFileSize.textContent = "Selected Document";
     dropzone.style.display = "none";
     uploadActionRow.style.display = "flex";
 
+    // Keep dropdown selection synced
+    if (sampleSelect && sampleSelect.value !== filename) {
+        sampleSelect.value = filename;
+    }
+
     switchView("studio");
     setStatus(`Processing '${filename}'...`, true);
-    showLoading(`Processing preset '${filename}'...`, "Running tiered extraction");
+    showLoading(`Processing '${filename}'...`, "Running tiered extraction");
 
     try {
         const response = await fetch(`/api/process_sample/${encodeURIComponent(filename)}`, {
@@ -404,6 +504,12 @@ function handleExtractionSuccess(data) {
     currentPageIndex = 0;
     currentZoom = 1.0;
 
+    // Dynamically sync and enhance the preset dropdown with the processed file and tier
+    if (data.file_name) {
+        const detectedTier = data.pages && data.pages[0] ? data.pages[0].tier_name : null;
+        appendToPresetDropdown(data.file_name, data.file_name, detectedTier);
+    }
+
     totalLatencyEl.textContent = `${data.total_execution_time_ms.toFixed(0)} ms`;
     const avgConf = (data.average_trust_score * 100).toFixed(0);
     trustScoreEl.textContent = `${avgConf}%`;
@@ -427,6 +533,10 @@ function renderCurrentPage() {
     if (!currentDocumentResult || !currentDocumentResult.pages) return;
     const page = currentDocumentResult.pages[currentPageIndex];
     if (!page) return;
+
+    if (viewportWrapper) {
+        viewportWrapper.scrollTop = 0;
+    }
 
     pageIndicator.textContent = `Page ${currentPageIndex + 1} / ${currentDocumentResult.total_pages}`;
     prevPageBtn.disabled = currentPageIndex === 0;
@@ -657,6 +767,7 @@ function initCanvasControls() {
 
 function applyZoom() {
     canvasStage.style.transform = `scale(${currentZoom})`;
+    canvasStage.style.transformOrigin = "top center";
     zoomLevelText.textContent = `${Math.round(currentZoom * 100)}%`;
 }
 
@@ -1341,3 +1452,78 @@ function initPipelineInspector() {
         });
     });
 }
+
+// ==========================================================================
+// Developer Integration Hub (cURL, Python SDK, CLI)
+// ==========================================================================
+const DEV_CODE_SNIPPETS = {
+    curl: `# 1. Process document via REST API
+curl -X POST "http://127.0.0.1:8000/api/process" \\
+  -H "Accept: application/json" \\
+  -F "file=@12th_board_gujarati_answersheet.pdf"
+
+# Response: HTTP/1.1 200 OK
+# {
+#   "file_name": "12th_board_gujarati_answersheet.pdf",
+#   "total_pages": 7,
+#   "average_trust_score": 0.98,
+#   "total_execution_time_ms": 312.5,
+#   "full_markdown": "# Reconstructed Document Content..."
+# }`,
+    python: `from nexusocr.sdk import NexusOCRClient
+
+# Initialize client against local or remote engine
+client = NexusOCRClient(base_url="http://127.0.0.1:8000")
+
+# Run tiered document extraction
+result = client.process_file("12th_board_gujarati_answersheet.pdf")
+
+print(f"Pages: {result.total_pages}, Latency: {result.total_execution_time_ms:.1f}ms")
+print(result.full_markdown)`,
+    cli: `# Run CLI extraction directly from terminal
+python -m nexusocr run 12th_board_gujarati_answersheet.pdf --json
+
+# [NexusOCR] Ingesting '12th_board_gujarati_answersheet.pdf'
+# [NexusOCR] Page 1: Trust=0.98 [Tier 1 Digital Native] in 8.4ms
+# [NexusOCR] Page 2-7: [Tier 2 Neural Indic Vision] in 304.1ms
+# [NexusOCR] Completed 7 pages in 312.5ms`
+};
+
+function initDeveloperHub() {
+    const tabs = document.querySelectorAll(".term-tab");
+    const codeEl = document.getElementById("termCodeSnippet");
+    const copyBtn = document.getElementById("copyCodeSnippetBtn");
+
+    if (!tabs.length || !codeEl) return;
+
+    let activeKey = "curl";
+
+    tabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            const key = tab.getAttribute("data-term");
+            if (!DEV_CODE_SNIPPETS[key]) return;
+
+            activeKey = key;
+            tabs.forEach(t => t.classList.toggle("active", t === tab));
+            codeEl.innerHTML = `<code>${escapeHtml(DEV_CODE_SNIPPETS[key])}</code>`;
+        });
+    });
+
+    if (copyBtn) {
+        copyBtn.addEventListener("click", () => {
+            const text = DEV_CODE_SNIPPETS[activeKey] || "";
+            navigator.clipboard.writeText(text).then(() => {
+                const span = copyBtn.querySelector("span");
+                if (span) {
+                    const orig = span.textContent;
+                    span.textContent = "Copied!";
+                    setTimeout(() => { span.textContent = orig; }, 1800);
+                }
+                showToast("Code snippet copied to clipboard");
+            }).catch(() => {
+                showToast("Copied code snippet");
+            });
+        });
+    }
+}
+

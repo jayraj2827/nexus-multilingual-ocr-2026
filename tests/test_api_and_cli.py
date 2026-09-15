@@ -15,6 +15,15 @@ FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 client = TestClient(app)
 
 
+def test_api_view_routes():
+    """Verifies GET /, /overview, and /studio return 200 OK with HTML content."""
+    for path in ["/", "/overview", "/studio"]:
+        response = client.get(path)
+        assert response.status_code == 200
+        assert "text/html" in response.headers.get("content-type", "")
+        assert "NexusOCR" in response.text
+
+
 def test_api_health_endpoint():
     """Verifies GET /api/health returns 200 and schema with hardware detection."""
     response = client.get("/api/health")

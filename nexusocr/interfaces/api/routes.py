@@ -33,6 +33,8 @@ batch_service = BatchDocumentService(ocr_service)
 
 
 @router.get("/")
+@router.get("/overview")
+@router.get("/studio")
 async def serve_index():
     """Serves the main web UI."""
     index_path = config.FRONTEND_DIR / "index.html"
@@ -62,6 +64,18 @@ async def list_sample_documents():
     """Returns available demo sample documents for 1-click evaluation."""
     curated_presets = [
         {
+            "name": "Accountancy.pdf",
+            "display": "CBSE Accountancy Answersheet",
+            "type": "Handwritten + Numbers",
+            "tier": "Tier 2 Neural",
+        },
+        {
+            "name": "12th guj med AS Acc.pdf",
+            "display": "12th Board Gujarati Answersheet",
+            "type": "Gujarati Cursive + Math",
+            "tier": "Tier 2 Neural",
+        },
+        {
             "name": "test_digital_english.pdf",
             "display": "Digital English Report",
             "type": "Digital PDF",
@@ -74,28 +88,10 @@ async def list_sample_documents():
             "tier": "Tier 1 Multilingual",
         },
         {
-            "name": "test_tables_financial.pdf",
-            "display": "Financial Statement & Grid",
-            "type": "Tabular PDF",
+            "name": "MCA Last Year Marksheet.pdf",
+            "display": "University Marksheet",
+            "type": "Dense Tabular Grid",
             "tier": "Tier 1 Grid",
-        },
-        {
-            "name": "01_multilingual.pdf",
-            "display": "Gujarati & English Document",
-            "type": "Multilingual PDF",
-            "tier": "Tier 1 Dual-Script",
-        },
-        {
-            "name": "Autonomous_Delivery_Robot_System_Design_Report.docx",
-            "display": "System Design Architecture",
-            "type": "Office Word",
-            "tier": "Office Doc",
-        },
-        {
-            "name": "award.png",
-            "display": "Certificate Raster Badge",
-            "type": "Scanned Image",
-            "tier": "Tier 2 Neural",
         },
     ]
     samples = []
