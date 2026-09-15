@@ -28,6 +28,7 @@ __pycache__/
 *.md
 !README.md
 !report/*.md
+!assets/*
 
 # Uploads & Data
 data/uploads/

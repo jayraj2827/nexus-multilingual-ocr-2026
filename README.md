@@ -20,6 +20,7 @@ NexusOCR is an enterprise-grade document extraction and multimodal intelligence 
 
 ## 📑 Table of Contents
 
+- [System Demo & Walkthrough](#-system-demo--walkthrough)
 - [Architectural Overview](#-architectural-overview)
 - [Key Capabilities](#-key-capabilities)
 - [Operating Principle](#-operating-principle)
@@ -35,6 +36,26 @@ NexusOCR is an enterprise-grade document extraction and multimodal intelligence 
 - [Verification & Automated Tests](#-verification--automated-tests)
 - [Roadmap & Enhancements](#-roadmap--enhancements)
 - [Project Reports & Documentation](#-project-reports--documentation)
+
+---
+
+## 🎬 System Demo & Walkthrough
+
+<p align="center">
+  <a href="https://youtu.be/0ER8VqPjlHg" target="_blank" title="Watch NexusOCR Live Demo on YouTube">
+    <img src="assets/nexusocr_demo_thumbnail.jpg" alt="NexusOCR Live Demo Video" width="100%" style="max-width: 900px; border-radius: 10px; box-shadow: 0 6px 24px rgba(0,0,0,0.25);">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://youtu.be/0ER8VqPjlHg" target="_blank">
+    <img src="https://img.shields.io/badge/▶️%20Watch%20Live%20Demo-YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch Live Demo on YouTube">
+  </a>
+  &nbsp;&nbsp;
+  <a href="assets/nexusocr_demo.mp4">
+    <img src="https://img.shields.io/badge/📥%20Direct%20MP4-Local%20Asset-2B5797?style=for-the-badge&logo=quicktime&logoColor=white" alt="Direct MP4 Asset">
+  </a>
+</p>
 
 ---
 
@@ -341,6 +362,7 @@ nexus-multilingual-ocr-2026/
 │   ├── logging.py              # Unified Logging
 │   └── exceptions.py           # Exception Hierarchy
 │
+├── assets/                     # Media & Demo Assets (Demo Preview & Visual Assets)
 ├── frontend/                   # UI Files
 │   ├── index.html              # Dashboard & Studio Layout
 │   ├── app.js                  # Frontend Application Logic & View Controller
@@ -374,7 +396,7 @@ nexus-multilingual-ocr-2026/
 ```powershell
 # Windows
 python -m venv .venv
-.venv\Scriptsctivate
+.venv\Scripts\activate
 
 # Linux / macOS
 python3 -m venv .venv
