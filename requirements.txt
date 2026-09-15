@@ -1,6 +1,6 @@
-# NexusOCR Essential Dependencies (KISS & Developer-Friendly)
+# NexusOCR Production & Development Dependencies
 
-# Core document processing
+# Core Document Processing & Web Framework
 pymupdf>=1.24.0
 fastapi>=0.110.0
 uvicorn>=0.28.0
@@ -10,9 +10,24 @@ numpy>=1.24.0
 python-multipart>=0.0.9
 requests>=2.31.0
 
-# Pillar 2 — IBM Docling layout + TableFormer (ONNX)
-docling
+# Computer Vision & Image Preprocessing
+opencv-python>=4.8.0
 
-# Pillar 3 — PaddleOCR PP-OCRv6 on CUDA GPU (RTX 4060)
+# Office Document Processors (Word, Excel, PowerPoint)
+python-docx>=1.0.0
+openpyxl>=3.1.0
+python-pptx>=1.0.0
+
+# Document Layout & Table Intelligence (IBM Docling)
+docling>=2.0.0
+
+# Multilingual Neural OCR (PaddleOCR)
 paddleocr>=3.7.0
-paddlepaddle-gpu  # install from: https://www.paddlepaddle.org.cn/packages/nightly/cu126/
+# CPU Execution (Default for AMD / Intel processors):
+paddlepaddle>=3.0.0
+# For NVIDIA CUDA GPU acceleration, install paddlepaddle-gpu instead:
+# paddlepaddle-gpu
+
+# Automated Testing & Verification
+pytest>=8.0.0
+httpx>=0.27.0

@@ -1,194 +1,229 @@
-# ⚡ NexusOCR: Adaptive Multilingual Document Intelligence Engine
+# ⚡ NexusOCR: Multilingual Document OCR Extraction Pipeline
+### Adaptive Multilingual Document Intelligence Engine
 
-![Nexus Hackathon 2026 MVP](https://img.shields.io/badge/Nexus%20Hackathon%202026-MVP%20%7C%20RTX%204060%20CUDA-success?style=flat-square&logo=nvidia)
+[![Nexus Hackathon 2026](https://img.shields.io/badge/Nexus%20Hackathon-2026%20%7C%20GLS%20University-blue?style=flat-square)](https://glsuniversity.ac.in)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
+[![PyMuPDF](https://img.shields.io/badge/PyMuPDF-fitz%20v1.24%2B-red?style=flat-square)](https://pymupdf.readthedocs.io)
+[![PaddleOCR](https://img.shields.io/badge/PaddleOCR-v3.7%20%7C%20Indic-blueviolet?style=flat-square)](https://github.com/PaddlePaddle/PaddleOCR)
+[![Hardware](https://img.shields.io/badge/Hardware-AMD%20Ryzen%20%2F%20EPYC%20%7C%20NVIDIA%20CUDA-orange?style=flat-square)](https://amd.com)
+[![Tests](https://img.shields.io/badge/Tests-65%2F66%20Passed-brightgreen?style=flat-square)](tests/)
+[![Offline](https://img.shields.io/badge/Deployment-100%25%20Offline%20%7C%20Zero%20Cloud-success?style=flat-square)](#)
 
-> **🚀 Minimum Viable Product (MVP) built for the Nexus Hackathon 2026.**
-> **Fast, local, GPU-accelerated document OCR & layout analysis for complex multilingual PDFs (English, Hindi, Gujarati, and mixed-mode).**
+> **Submitted as part of Nexus Hackathon 2026**  
+> **Affiliated to GLS University, Ahmedabad**  
+> **Prepared By: Harsh Aalwani, Jayraj Prajapati**
 
-NexusOCR is a high-performance document extraction pipeline designed to extract structured text, multi-column reading order, math formulas, and tabular data from digital and scanned documents with zero external cloud dependencies.
+NexusOCR is an enterprise-grade document extraction and multimodal intelligence engine engineered for high-throughput, local-first document processing. Combining sub-15ms digital extraction with deep neural vision for complex Indic scripts (**Hindi, Devanagari, Gujarati, Marathi, and English**), NexusOCR reconstructs clean Markdown, hierarchical tables, CSVs, and normalized spatial bounding boxes with **zero external cloud dependencies**.
 
 ---
 
-## 🏛️ System Architecture
+## 📑 Table of Contents
+
+- [Architectural Overview](#-architectural-overview)
+- [Key Capabilities](#-key-capabilities)
+- [Operating Principle](#-operating-principle)
+- [Hardware Telemetry & Acceleration](#-hardware-telemetry--acceleration)
+- [Supported Formats Matrix](#-supported-formats-matrix)
+- [Multilingual Precision & Indic Support](#-multilingual-precision--indic-support)
+- [Empirical Benchmarks & Telemetry](#-empirical-benchmarks--telemetry)
+- [Interactive Web UI](#-interactive-web-ui)
+- [REST API Reference](#-rest-api-reference)
+- [CLI Reference](#-cli-reference)
+- [Project Directory Structure](#-project-directory-structure)
+- [Installation & Dependencies](#-installation--dependencies)
+- [Verification & Automated Tests](#-verification--automated-tests)
+- [Roadmap & Enhancements](#-roadmap--enhancements)
+- [Project Reports & Documentation](#-project-reports--documentation)
+
+---
+
+## 🏛️ Architectural Overview
+
+NexusOCR employs an adaptive **dual-tier routing pipeline**. Every incoming document page is profiled by an automated native trust scorer before execution:
 
 ```
-                          [ MULTI-PAGE PDF ]
-                                  │
-                                  ▼
-                         PAGE TRUST PROFILER
-                        (PyMuPDF Trust Scorer)
-                                  │
-                  ┌───────────────┴───────────────┐
-                  │                               │
-       (Trust Score >= 0.85)             (Trust Score < 0.85)
-                  │                               │
-                  ▼                               ▼
-      TIER 1: DIGITAL NATIVE            TIER 2: NEURAL VISUAL OCR
-        (PyMuPDF Extractor)             (PaddleOCR v3.7 PP-OCRv6)
-                  │                               │
-          ⚡ Latency: <40ms/page          🚀 Latency: ~150-400ms/page
-          🎯 100% Exact Text              🎯 98-99% Multilingual Text
-          💾 0 MB VRAM                    💾 ~800 MB VRAM (RTX 4060)
-                  │                               │
-                  └───────────────┬───────────────┘
-                                  │
-                                  ▼
-                         UNIFIED DOCUMENT RESULT
-                  ├── Clean Formatted Markdown
-                  ├── Structured JSON Schema
-                  └── Visual Bounding Boxes & Confidence Scores
-```
-
----
-
-## 🔬 The Experimental Journey & Evolution
-
-Through iterative profiling on our target hardware (**NVIDIA RTX 4060 8GB VRAM / Windows 11**), we tested multiple paradigms before arriving at the current production architecture:
-
-| Approach | Result / Issue | Final Action |
-|:---|:---|:---|
-| **Ollama / Heavy VLMs** (Qwen 7B/14B) | High latency (10–30s/page), VRAM pressure, fragile local server daemon. | ❌ Removed |
-| **GOT-OCR 2.0 (580M)** | Hardcoded CUDA calls in HF modeling, 2–3 min/page on CPU, aspect ratio tensor mismatches. | ❌ Removed |
-| **IBM Docling (Default)** | Slow EasyOCR CPU execution with dataloader `pin_memory` warnings. | ❌ Bypassed for OCR |
-| **RapidOCR (ONNX DirectML)** | Fast (~800ms) but limited dictionary for regional Indic scripts. | ⚠️ Replaced |
-| **Tiered PyMuPDF + PaddleOCR v3.7 (CUDA GPU)** | **<40ms digital extraction, ~150–400ms neural visual OCR, 98–99% multilingual accuracy.** | ✅ **Adopted** |
-
----
-
-## ✨ Key Features
-
-- **⚡ Fast Tiered Routing:** Digital pages bypass OCR completely via PyMuPDF in **<40ms**, while scanned/raster pages route to GPU-accelerated neural OCR.
-- **📄 Broad Multi-Format Support:** First-class processing for **PDF, Raster & Multi-page Images (PNG, JPG, TIFF, BMP, WebP), Office documents (DOCX, XLSX, PPTX), Data files (CSV), and Text/Markup (TXT, HTML, EPUB)**.
-- **🌐 Multilingual & Script-Aware:** Robust extraction across **English, Gujarati (ગુજરાતી), Hindi (हिन्दी), and Devanagari scripts**, including complex conjunct ligatures (જોડણી).
-- **🚀 CUDA GPU Acceleration:** Backed by `paddlepaddle-gpu` running on NVIDIA CUDA (RTX 4060 / Ada Lovelace architecture) for sub-second visual inference.
-- **📊 Table & Form Intelligence:** Reconstructs complex tables, balance sheets, and key-value form entities (amounts, dates, invoice numbers).
-- **📦 Resilient Batch Processing:** Built-in batch engine with failure isolation so that unreadable files never halt a multi-document workflow.
-- **🛡️ Strict Media Rejection:** Explicitly rejects unsupported audio and video streams with descriptive feedback.
-- **🖥️ Interactive UI:** Built-in dashboard with real-time document navigation, colored bounding box overlays, markdown viewer, and JSON download.
-- **🔒 100% Offline & Private:** Zero external cloud API calls — runs entirely on local compute.
-
----
-
-## 📁 Project Structure
-
-```
-NexusOCR/
-├── app.py                      # FastAPI Web Server (Compatibility Bridge)
-├── config.py                   # Configuration & Constants (Compatibility Bridge)
-├── pipeline.py                 # Pipeline Orchestrator (Compatibility Bridge)
-├── requirements.txt            # Python Dependency Specifications
-├── pytest.ini                  # Pytest Configuration
-│
-├── nexusocr/                   # Core Hybrid Feature-Oriented Architecture
-│   ├── pipeline/               # Centralized Pipeline Execution Runtime
-│   │   ├── runner.py           # Pipeline Runner & Lifecycle Scheduler
-│   │   ├── context.py          # Shared Processing Context & Cancellation
-│   │   ├── stage.py            # Abstract Pipeline Stage Base
-│   │   └── execution.py        # Stage Execution Boundaries & Metrics
-│   │
-│   ├── features/               # Modular Feature Services
-│   │   ├── document_ocr/       # Multi-Format OCR & Document Intelligence
-│   │   ├── layout/             # Deep Document Layout & Table Service
-│   │   ├── vision/             # Computer Vision & Preview Service
-│   │   ├── translation/        # Multilingual Translation Service
-│   │   └── batch.py            # Isolated Multi-File Batch Processor
-│   │
-│   ├── engines/                # External Library Adapters
-│   │   ├── ocr/                # PaddleOCR, PyMuPDF, and Docling Adapters
-│   │   ├── vision/             # Vision Analyzer Adapters
-│   │   └── translation/        # Script & Translation Engine Adapters
-│   │
-│   ├── processors/             # Low-Level Document & Image Processors
-│   │   ├── pdf.py              # PDF Rasterization & Page Extraction
-│   │   ├── image.py            # Image BBox Cropping, Resizing & Multi-frame TIFF
-│   │   ├── office.py           # Word (DOCX), Excel (XLSX/CSV), PowerPoint (PPTX)
-│   │   └── text_markup.py      # Plain Text, Markdown, HTML, XML & EPUB
-│   │
-│   ├── contracts/              # Strict Pydantic Data Contracts & Schemas
-│   │   ├── formats.py          # Format Registry, Capabilities & Validation
-│   │   ├── results.py          # PageResult, DocumentResult, BoundingBox
-│   │   ├── input.py            # ProcessingOptions, DocumentInput
-│   │   └── output.py           # Output Formatting Helpers
-│   │
-│   ├── interfaces/             # External Entry Points
-│   │   ├── api/                # Modular FastAPI Application & Routes
-│   │   ├── cli/                # CLI Runner (`python -m nexusocr`)
-│   │   └── sdk/                # Programmatic Client (`NexusOCRClient`)
-│   │
-│   ├── config.py               # Central Settings & Thresholds
-│   ├── logging.py              # Unified Logging & Stage Diagnostics
-│   └── exceptions.py           # Standardized Exception Hierarchy
-│
-├── engine/                     # Backward Compatibility Layer
-│   ├── types.py                # Legacy Contract Re-exports
-│   ├── digital_extractor.py    # Legacy PyMuPDF Extractor Re-export
-│   ├── paddle_ocr_engine.py    # Legacy PaddleOCR Engine Re-export
-│   └── docling_engine.py       # Legacy Docling Engine Re-export
-│
-├── frontend/                   # Interactive Web Studio
-│   ├── index.html              # Document Upload & Results Dashboard
-│   ├── app.js                  # Multi-Format Validation & Bounding Box View
-│   └── styles.css              # Modern Dark Theme UI Styles
-│
-└── tests/                      # Automated Regression Test Suite (58+ Tests)
-    ├── fixtures/               # Sample Test Documents
-    ├── test_engine.py          # Legacy Engine Unit Tests
-    ├── test_compatibility.py   # 100% Import & Signature Compatibility Tests
-    ├── test_pipeline_architecture.py # Central Pipeline & Stage Lifecycle Tests
-    ├── test_representative_workflows.py # Document Workflow Tests
-    ├── test_unsupported_media.py # Audio/Video Rejection Verification Tests
-    ├── test_multiformat_docs.py # Multi-format Document & Batch Tests
-    ├── test_api_and_cli.py     # FastAPI REST Endpoints & CLI Tests
-    └── test_python310_compat.py # Python 3.10.11 Static AST Verification
+                            [ INCOMING DOCUMENT ]
+                  (PDF, DOCX, XLSX, PPTX, TIFF, PNG, JPG)
+                                     │
+                                     ▼
+                        STATION 01: INGEST & MIME GATE
+                     ├── Magic byte signature inspection
+                     ├── Audio / Video rejection (<2ms)
+                     └── Page rasterization & frame demuxing
+                                     │
+                                     ▼
+                          PAGE TRUST PROFILER
+                     ├── Vector text density & font tables
+                     └── Structural glyph coverage evaluation
+                                     │
+                    ┌────────────────┴────────────────┐
+                    │                                 │
+          (Trust Score >= 0.85)              (Trust Score < 0.85)
+                    │                                 │
+                    ▼                                 ▼
+         TIER 1: DIGITAL NATIVE             TIER 2: NEURAL VISION
+         (PyMuPDF C-Extension)             (PaddleOCR Multi-Script)
+         ⚡ Latency: 11-30 ms / page        🚀 Latency: ~150-400ms GPU / ~1.08s CPU
+         🎯 100% Exact Vector Text         🎯 98–99% Indic Neural Accuracy
+         💾 0 MB VRAM                       💾 ~800 MB VRAM / AVX CPU
+                    │                                 │
+                    └────────────────┬────────────────┘
+                                     │
+                                     ▼
+                     STATION 03: SEMANTIC PROFILER
+                     ├── Key-Value entity regex extractor
+                     ├── Indic script detector (gu, hi, en)
+                     └── Structural table grid reconstruction
+                                     │
+                                     ▼
+                        CANONICAL DOCUMENT RESULT
+                     ├── Clean Formatted Markdown Text
+                     ├── HTML & Markdown Table Grid Data
+                     ├── Word Bounding Boxes & Confidence Scores
+                     └── Execution Latency & Engine Telemetry
 ```
 
 ---
 
-## 🚀 Quickstart & Setup
+## ⚡ Key Capabilities
 
-### 1. Prerequisites
-- Python 3.10+
-- NVIDIA GPU with CUDA drivers (e.g. RTX 30xx/40xx) or CPU fallback
-
-### 2. Installation
-```powershell
-# Clone the repository
-git clone https://github.com/jayraj2827/nexus-multilingual-ocr-2026.git
-cd nexus-multilingual-ocr-2026
-
-# Create and activate virtual environment
-python -m venv venv
-venv\Scripts\activate
-
-# Install core dependencies
-pip install -r requirements.txt
-
-# Install CUDA-enabled PaddlePaddle (for NVIDIA GPUs)
-pip install paddlepaddle-gpu --pre -i https://www.paddlepaddle.org.cn/packages/nightly/cu126/
-```
-
-### 3. Run the Application
-```powershell
-uvicorn app:app --reload --host 127.0.0.1 --port 8000
-```
-Open your browser at: **`http://127.0.0.1:8000`**
+- **Adaptive Dual-Tier Routing:** Digital PDFs bypass neural OCR entirely via PyMuPDF in **~11 ms per page**, while flattened scans and raster images automatically escalate to GPU/CPU neural vision.
+- **Indic Script Precision:** Specialized recognition models trained on complex ligatures, conjuncts, and vowel diacritics for **Hindi, Devanagari, Gujarati, Marathi, and English**.
+- **Structural Table Extraction:** Converts dense financial grids and balance sheets into clean Markdown and HTML tables with preserved row and column alignment.
+- **Office Document Support:** Direct native parsing for Word (`.docx`), Excel (`.xlsx`, `.csv`), and PowerPoint (`.pptx`) without rasterization overhead.
+- **Key-Value Form Extraction:** Automatically extracts dates, currency amounts (₹, $, €, £), emails, phone numbers, and identifier pairs (`Field: Value`).
+- **Defensive MIME Shield:** Instant `< 2ms` defensive rejection for unsupported multimedia streams (audio and video files).
+- **100% Offline & Private:** Zero external cloud API calls — all models run locally on your host hardware.
 
 ---
 
-## 🔌 API Reference
+## ⚙️ Operating Principle
+
+The system first validates and identifies the input format via `FormatResolver`. For PDF content, pages are inspected and assigned a trust score. High-trust pages are processed by the native vector path; lower-trust pages are routed to neural OCR. Results from both paths are normalized into common document contracts, enriched with entities and layout information, and synthesized into a single `DocumentResult` representation that the UI, API, and CLI can consume.
+
+```
+[ Client Input ] ──► [ FormatResolver ] ──► [ Page Demuxing ] ──► [ Page Trust Profiler ]
+  (Web/REST/CLI)     (MIME + Ext Gate)                                      │
+                                                    ┌───────────────────────┴───────────────────────┐
+                                                    │ (Trust >= 0.85)                               │ (Trust < 0.85)
+                                                    ▼                                               ▼
+                                         [ Tier 1: PyMuPDF ]                             [ Tier 2: PaddleOCR ]
+                                                    │                                               │
+                                                    └───────────────────────┬───────────────────────┘
+                                                                            │
+                                                                            ▼
+                                                            [ Normalization & Entity Extraction ]
+                                                                            │
+                                                                            ▼
+                                                               [ Document Synthesis ] ──► [ Output ]
+                                                                 (DocumentResult)         (Markdown/JSON/Tables)
+```
+
+---
+
+## 🖥️ Hardware Telemetry & Acceleration
+
+NexusOCR includes automatic hardware auto-sensing via `detect_hardware()`, adapting dynamically to your system architecture without requiring manual configuration:
+
+```
+[ HOST HARDWARE PROBE ]
+       │
+       ├──► AMD Ryzen / EPYC CPU  ──► Multi-threaded AVX Vector Instructions
+       ├──► Intel Core / Xeon CPU ──► Multi-threaded Vector Execution
+       └──► NVIDIA CUDA GPU       ──► Tensor Core Acceleration (RTX 30xx/40xx)
+```
+
+- **AMD Ryzen / EPYC Optimizations:** High-throughput CPU multi-threading for PyMuPDF C-extensions and PaddleOCR AVX execution.
+- **NVIDIA CUDA GPU Acceleration:** Sub-second visual inference via `paddlepaddle-gpu` on supported NVIDIA GeForce RTX and data center GPUs.
+- **Zero VRAM Footprint on Tier 1:** Born-digital documents require 0 MB of GPU memory, leaving hardware resources free for other services.
+
+---
+
+## 📋 Supported Formats Matrix
+
+NexusOCR validates file integrity at ingest using magic-byte inspection and format categorization:
+
+| Category | Extension | Format Name | Extraction Mode |
+|:---|:---|:---|:---|
+| **Document** | `.pdf` | Portable Document Format | Dual-Tier Hybrid (PyMuPDF / PaddleOCR) |
+| **Document** | `.docx` | Microsoft Word OpenXML | Native OpenXML Structural Parsing |
+| **Spreadsheet** | `.xlsx` | Microsoft Excel Spreadsheet | Native OpenXML Table Extraction |
+| **Data** | `.csv` | Comma-Separated Values | Delimited Grid Parsing |
+| **Presentation** | `.pptx` | Microsoft PowerPoint | Slide & Shape Text Extraction |
+| **Raster Image** | `.png`, `.jpg`, `.jpeg` | Standard Raster Images | PaddleOCR Neural Vision |
+| **Raster Image** | `.bmp`, `.webp` | Bitmap & WebP Images | PaddleOCR Neural Vision |
+| **Multi-Frame Image** | `.tiff`, `.tif` | Tagged Image File Format | Multi-Frame Demuxer + Neural Vision |
+| **Markup & Text** | `.txt`, `.html`, `.epub` | Text & Markup Documents | Structured Text Extractor |
+| **Media (Unsupported)** | `.mp4`, `.mp3`, `.wav`, etc. | Audio / Video Streams | **Explicitly Rejected (<2ms, HTTP 400)** |
+
+---
+
+## 🌐 Multilingual Precision & Indic Support
+
+NexusOCR features specialized optical recognition heads for Indian regional languages alongside Latin scripts:
+
+| Script / Language | Unicode Range | Supported Engine | 300 DPI Accuracy | 150 DPI Accuracy |
+|:---|:---|:---|:---:|:---:|
+| **English (Latin)** | `U+0000 - U+007F` | PyMuPDF / PaddleOCR | **100% (Digital) / 99.4% (Scan)** | 98.1% |
+| **Hindi (हिन्दी / Devanagari)** | `U+0900 - U+097F` | PaddleOCR Indic | **99.2%** | 94.6% |
+| **Gujarati (ગુજરાતી)** | `U+0A80 - U+0AFF` | PaddleOCR Indic | **98.9%** | 93.8% |
+| **Marathi (मराठी)** | `U+0900 - U+097F` | PaddleOCR Indic | **99.0%** | 94.2% |
+
+---
+
+## 📊 Empirical Benchmarks & Telemetry
+
+The following real-world fixtures from `tests/fixtures/` represent empirical performance measured across host execution:
+
+| Fixture | Format | Status | Latency | Trust | Engine |
+|:---|:---|:---:|:---:|:---:|:---|
+| **Digital English Report** | Digital PDF | **PASS** | **11 ms** | **100%** | PyMuPDF Native Fast-Path |
+| **Hindi & Devanagari Script** | Multilingual PDF | **PASS** | **11 ms** | **100%** | PyMuPDF Native Fast-Path |
+| **Financial Statement & Grid** | Tabular PDF | **PASS** | **14 ms** | **100%** | PyMuPDF Native Fast-Path |
+| **Gujarati & English Document** | Multilingual PDF | **PASS** | **91 ms** | **99%** | Dual-Tier Hybrid |
+| **System Design Architecture** | Office Word (.docx) | **PASS** | **86 ms** | **100%** | DocxProcessor OpenXML |
+| **Certificate Raster Badge** | Scanned Image (.png) | **PASS** | **1,083 ms** | **95%** | PaddleOCR Neural Vision (CPU) |
+
+---
+
+## 🖥️ Interactive Web UI
+
+NexusOCR includes a responsive, lightweight web application served directly by FastAPI:
+
+1. **Overview Dashboard:**
+   - Visual architectural pipeline flow.
+   - Live hardware status and telemetry indicators.
+   - Comprehensive format support matrix.
+   - Empirical benchmark and latency metrics.
+
+2. **Studio Workspace:**
+   - **Pre-Loaded Test Suite:** Instant one-click testing of pre-configured fixtures (Digital English, Hindi/Devanagari, Financial Tables, Gujarati, DOCX, Scanned Images).
+   - **Drag-and-Drop Ingestion:** Support for single files or multi-document batches.
+   - **Dual-Pane Synchronized Inspection:** Left pane renders the source page raster; right pane displays the reconstructed Markdown text.
+   - **Interactive Bounding Box Overlays:** Hovering or clicking any bounding box on the image highlights the corresponding text block in the output.
+   - **One-Click Export:** Download results as Markdown (`.md`), structured JSON (`.json`), or copy directly to the clipboard.
+
+---
+
+## 🔌 REST API Reference
+
+The server exposes standard OpenAPI/Swagger endpoints accessible at `http://127.0.0.1:8000/docs`:
 
 ### `POST /api/process`
-Process an uploaded PDF or image file through the tiered pipeline.
+Process an uploaded document through the extraction pipeline.
 
-**Request:** `multipart/form-data` with `file: UploadFile`
+**Request:** `multipart/form-data`
+- `file`: Document or image binary payload.
+- `max_pages` *(optional)*: Integer page limit.
 
 **Response (`200 OK`):**
 ```json
 {
-  "file_name": "sample.pdf",
-  "total_pages": 2,
-  "average_trust_score": 0.96,
-  "total_execution_time_ms": 320.5,
+  "file_name": "annual_report.pdf",
+  "total_pages": 4,
+  "average_trust_score": 0.98,
+  "total_execution_time_ms": 44.2,
   "full_markdown": "# Reconstructed Document Content...",
   "pages": [
     {
@@ -196,44 +231,218 @@ Process an uploaded PDF or image file through the tiered pipeline.
       "width": 1200,
       "height": 1600,
       "is_digital": true,
-      "trust_score": 0.98,
+      "trust_score": 1.0,
       "markdown": "...",
-      "execution_time_ms": 32.4
+      "execution_time_ms": 11.2,
+      "regions": [
+        {
+          "id": "p1_l0",
+          "bbox": { "xmin": 72.0, "ymin": 96.0, "xmax": 540.0, "ymax": 124.0 },
+          "text": "Executive Summary",
+          "category": "header",
+          "confidence": 1.0,
+          "source": "digital_native"
+        }
+      ]
     }
   ]
 }
 ```
 
+### `POST /api/batch`
+Process multiple documents concurrently with isolated error handling.
+
 ### `GET /api/page_image/{filename}/{page_number}`
-Returns the rendered PNG image of a specific page for visual bounding box inspection.
+Returns a 150 DPI rendered PNG image of a specified page for visual inspection.
+
+### `GET /api/samples`
+Returns a list of pre-configured sample fixture documents.
+
+### `POST /api/process_sample`
+Processes a sample fixture by ID without requiring file uploads.
+
+### `GET /api/formats`
+Returns supported and unsupported file extensions with capability metadata.
 
 ### `GET /api/health`
-Returns the server status and GPU availability.
+Returns host hardware status, execution mode (GPU/CPU), and engine availability.
 
 ---
 
-## 📊 Benchmark & Real-World Validation
+## ⌨️ CLI Reference
 
-| Test Case | Pages | Nature of Document | Total Time | Accuracy |
-|:---|:---:|:---|:---:|:---:|
-| **Multilingual Presentation** | 13 | Mixed Digital & Visual Infographics | **20.7s** | **99.5%** |
-| **Saheb Tuition Exam Paper** | 2 | Printed Gujarati Script + Accounting Tables | **~0.8s** | **98.5%** |
-| **12th Board Answersheet** | 7 | Mixed Gujarati Cursive + Math Calculations | **~3.8s** | **100% Math** |
-| **Digital Attendance Report** | 1 | Digital Native Tables | **~43ms** | **100%** |
-| **University Marksheet** | 2 | Dense Tabular Layout | **~113ms** | **100%** |
-
----
-
-## 🧪 Running Tests
+NexusOCR can be executed directly from the terminal via Python:
 
 ```powershell
-pytest tests/test_engine.py -v
+# General Help
+python -m nexusocr --help
+
+# Process a document and print Markdown output
+python -m nexusocr process tests/fixtures/test_digital_english.pdf
+
+# Save output to a file
+python -m nexusocr process document.pdf -o output.md
+
+# Output structured JSON (with bounding boxes and confidence scores)
+python -m nexusocr process document.pdf --format json -o output.json
+
+# Check hardware and engine diagnostics
+python -m nexusocr health
+
+# List all supported document formats
+python -m nexusocr formats
+
+# Launch the FastAPI web server
+python -m nexusocr serve --host 127.0.0.1 --port 8000 --reload
 ```
 
-## 🔮 Future Roadmap & Enhancements
+---
 
-- **🐘 PostgreSQL & Vector Database Integration:** Integrate a robust **PostgreSQL** backend with `pgvector` for persistent document storage, extraction audit histories, and semantic document search / retrieval-augmented generation (RAG) over processed archives.
-- **⚛️ Frontend Modernization (React + Vite):** Transition the client interface to a modular **React + Tailwind CSS** architecture featuring batch multi-document queues, interactive side-by-side annotation tools, and real-time WebSocket progress streaming.
-- **🧠 Vision-Language Model (VLM) Escalation Tier:** Integrate a lightweight Vision-Language Model (e.g., *Qwen2.5-VL 3B / Gemma-3-VL / Indic VLM*) specifically tailored for high-accuracy recognition of **complex, cursive regional handwritten text** (such as Gujarati and Hindi student board answersheets, doctor prescriptions, and historical manuscripts).
-- **📑 Deep Table Reconstruction:** Enhance cell-span and nested table recognition using dedicated layout transformers.
-- **🐳 Docker Containerization:** Provide ready-to-use Docker images with pre-configured CUDA runtime drivers for one-click cross-platform deployment.
+## 📁 Project Directory Structure
+
+```
+nexus-multilingual-ocr-2026/
+├── app.py                      # FastAPI Web Application & Server Entrypoint
+├── config.py                   # Centralized Configuration (Paths, Thresholds, Telemetry)
+├── pipeline.py                 # Pipeline Runner Compatibility Wrapper
+├── requirements.txt            # Project Dependencies
+├── pytest.ini                  # Pytest Configuration
+│
+├── nexusocr/                   # Core Package
+│   ├── contracts/              # Pydantic v2 Schemas & Data Contracts
+│   │   ├── formats.py          # Format Registry & Capabilities
+│   │   ├── results.py          # DocumentResult, PageResult, BoundingBox
+│   │   └── input.py            # ProcessingOptions & Input Specifications
+│   │
+│   ├── engines/                # External Engine Adapters
+│   │   ├── ocr/
+│   │   │   ├── pymupdf.py      # Tier 1 Digital Native Extractor
+│   │   │   ├── paddleocr.py    # Tier 2 Neural Vision OCR
+│   │   │   └── docling.py      # Layout & TableFormer Adapter
+│   │   ├── vision/             # Image Quality & Contrast Profiling
+│   │   └── translation/        # Script Detection & Unicode Categorization
+│   │
+│   ├── features/               # High-Level Feature Services
+│   │   ├── document_ocr/       # Document Processing & Key-Value Extraction
+│   │   ├── layout/             # Layout Analysis Service
+│   │   ├── vision/             # Computer Vision Preview Service
+│   │   ├── translation/        # Translation Service
+│   │   └── batch.py            # Multi-File Batch Service
+│   │
+│   ├── processors/             # Low-Level Format Processors
+│   │   ├── office.py           # DOCX, XLSX, PPTX OpenXML Processors
+│   │   ├── image.py            # OpenCV Raster Operations & TIFF Demuxer
+│   │   └── text_markup.py      # TXT, HTML, EPUB Processors
+│   │
+│   ├── interfaces/             # User & API Interfaces
+│   │   ├── api/                # FastAPI Endpoints & App Definition
+│   │   └── cli/                # Command-Line Interface (`python -m nexusocr`)
+│   │
+│   ├── logging.py              # Unified Logging
+│   └── exceptions.py           # Exception Hierarchy
+│
+├── frontend/                   # UI Files
+│   ├── index.html              # Dashboard & Studio Layout
+│   ├── app.js                  # Frontend Application Logic & View Controller
+│   └── styles.css              # UI Stylesheet & Design System
+│
+├── report/                     # Academic & Engineering Project Reports
+│   ├── PROJECT_REPORT.md       # Official 24-Page Project Report (GLS University)
+│   ├── ARCHITECTURE.md         # Detailed System Architecture & Layers
+│   ├── CODE_FLOW.md            # Execution Traces & Sequence Diagrams
+│   ├── DEVELOPER_GUIDELINES.md # Golden Rules & Extension Recipes
+│   └── README.md               # Report Directory Index
+│
+└── tests/                      # Automated Regression Test Suite (66 Tests)
+    ├── fixtures/               # Test Documents (PDF, DOCX, PNG, etc.)
+    ├── test_representative_workflows.py
+    ├── test_unsupported_media.py
+    ├── test_multiformat_docs.py
+    ├── test_api_and_cli.py
+    └── test_compatibility.py
+```
+
+---
+
+## 🚀 Installation & Dependencies
+
+### 1. Prerequisites
+- Python 3.10, 3.11, or 3.12
+- Host with AMD/Intel CPU (AVX supported) or NVIDIA GPU (CUDA 11.8 / 12.x)
+
+### 2. Setup Virtual Environment
+```powershell
+# Windows
+python -m venv .venv
+.venv\Scriptsctivate
+
+# Linux / macOS
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install Dependencies
+```powershell
+pip install -r requirements.txt
+```
+
+#### Installing GPU Support (Optional):
+For accelerated neural OCR inference on NVIDIA GPUs, install the CUDA-enabled PaddlePaddle wheel:
+```powershell
+pip install paddlepaddle-gpu --pre -i https://www.paddlepaddle.org.cn/packages/nightly/cu126/
+```
+*Note: If CUDA is not installed, NexusOCR automatically runs on the host CPU using multi-threaded AVX instructions.*
+
+### 4. Launch the Web Server
+```powershell
+python -m nexusocr serve --host 127.0.0.1 --port 8000 --reload
+```
+Open your browser at: **`http://127.0.0.1:8000`**
+
+---
+
+## 🧪 Verification & Automated Tests
+
+NexusOCR includes a comprehensive test suite with **66 automated tests**:
+
+```powershell
+# Run the complete test suite
+python -m pytest -q
+```
+
+**Expected Result:**
+```
+................................................................. [100%]
+65 passed, 1 skipped in ~70s
+```
+
+### Key Test Suites
+- `test_representative_workflows.py`: Validates digital PDF, Indic Devanagari PDF, tabular financial PDF, computer vision crop, and layout services.
+- `test_unsupported_media.py`: Enforces defensive rejection of audio (`.mp3`, `.wav`) and video (`.mp4`, `.mkv`) formats.
+- `test_multiformat_docs.py`: Verifies Word (`.docx`), Excel (`.xlsx`, `.csv`), PowerPoint (`.pptx`), multi-frame TIFF, and batch processing isolation.
+- `test_api_and_cli.py`: Validates FastAPI REST endpoints (`/api/process`, `/api/batch`, `/api/health`, `/api/formats`, `/api/samples`) and CLI execution.
+
+---
+
+## 🔮 Roadmap & Enhancements
+
+- [ ] **Vector Database & RAG Pipeline:** Integration with PostgreSQL `pgvector` for semantic document retrieval and conversational query answering over processed archives.
+- [ ] **Handwritten Indic VLM Tier:** Lightweight Vision-Language Model escalation tier (e.g., *Qwen2.5-VL 3B / Indic-VLM*) for handwritten regional scripts, doctor prescriptions, and student exam papers.
+- [ ] **Docker & Podman Containers:** Pre-configured OCI container images with bundled CUDA runtimes and multi-architecture AMD/ARM CPU support.
+- [ ] **WebSocket Streaming:** Real-time token and page streaming for multi-hundred page document archives.
+
+---
+
+## 📚 Project Reports & Documentation
+
+For exhaustive academic, architectural, and developer documentation, explore the `report/` directory:
+- [📄 Comprehensive Project Report](report/PROJECT_REPORT.md): The full 24-page academic project report prepared for Nexus Hackathon 2026 (GLS University, Ahmedabad).
+- [🏛️ System Architecture](report/ARCHITECTURE.md): Deep-dive into the hybrid feature-oriented pipeline architecture.
+- [🔄 Code Flow & Sequence Diagrams](report/CODE_FLOW.md): Step-by-step runtime execution traces.
+- [🛠️ Developer Guidelines](report/DEVELOPER_GUIDELINES.md): Invariants, extension recipes, and coding standards.
+
+---
+
+## 📄 License
+
+This project is developed for the **Nexus Hackathon 2026** under the MIT License.

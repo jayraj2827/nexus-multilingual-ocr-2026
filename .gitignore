@@ -24,9 +24,10 @@ __pycache__/
 .env
 .env.local
 
-# Markdown Plans & Internal Docs (ignore all except main README.md)
+# Markdown Plans & Internal Docs (ignore all except main README.md and report docs)
 *.md
 !README.md
+!report/*.md
 
 # Uploads & Data
 data/uploads/
