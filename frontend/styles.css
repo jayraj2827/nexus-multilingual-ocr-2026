@@ -202,9 +202,13 @@ body {
     box-shadow: 1.5px 1.5px 0px var(--border-dark);
 }
 
-/* Header Center Controls */
-.header-center {
-    display: flex;
+/* Header Center & Right Controls (Hidden on Overview landing, visible in Studio) */
+.studio-only {
+    display: none !important;
+}
+
+body.studio-mode .studio-only {
+    display: flex !important;
     align-items: center;
     gap: 12px;
 }

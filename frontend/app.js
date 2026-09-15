@@ -108,21 +108,34 @@ document.addEventListener("DOMContentLoaded", async () => {
 // View Routing & Navigation (Overview / Studio / Testing)
 // ==========================================================================
 function switchView(viewName) {
+    if (viewName === "overview" || viewName === "landing") {
+        viewName = "landing";
+    }
+
     currentView = viewName;
+    document.body.classList.toggle("studio-mode", viewName === "studio");
 
-    // Update Nav Buttons
-    document.querySelectorAll(".nav-btn").forEach(btn => {
-        btn.classList.toggle("active", btn.getAttribute("data-target") === `view-${viewName}`);
-    });
-
-    // Update View Containers
-    document.querySelectorAll(".view-container").forEach(c => {
-        c.classList.toggle("active", c.id === `view-${viewName}`);
-    });
-
-    // Sync window hash
-    if (window.location.hash !== `#${viewName}`) {
-        window.history.replaceState(null, "", `#${viewName}`);
+    if (viewName === "studio") {
+        document.querySelectorAll(".nav-btn").forEach(btn => {
+            btn.classList.toggle("active", btn.getAttribute("data-target") === "view-studio");
+        });
+        document.querySelectorAll(".view-container").forEach(c => {
+            c.classList.toggle("active", c.id === "view-studio");
+        });
+        if (window.location.hash !== "#studio") {
+            window.history.replaceState(null, "", "#studio");
+        }
+    } else {
+        // Overview Landing View
+        document.querySelectorAll(".nav-btn").forEach(btn => {
+            btn.classList.toggle("active", btn.getAttribute("data-target") === "view-landing");
+        });
+        document.querySelectorAll(".view-container").forEach(c => {
+            c.classList.toggle("active", c.id === "view-landing");
+        });
+        if (window.location.hash !== "#overview" && window.location.hash !== "#landing") {
+            window.history.replaceState(null, "", "#overview");
+        }
     }
 
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -146,13 +159,11 @@ function initViewNavigation() {
 
 function handleHashNavigation() {
     const hash = window.location.hash.replace("#", "");
-    if (hash === "testing" || hash === "diagnostics") {
+    if (hash === "testing" || hash === "diagnostics" || hash === "studio") {
         switchView("studio");
-        switchTab("diagnostics");
-    } else if (hash === "studio") {
-        switchView("studio");
-    } else if (hash === "overview" || hash === "landing") {
-        switchView("landing");
+        if (hash === "diagnostics" || hash === "testing") {
+            switchTab("diagnostics");
+        }
     } else {
         switchView("landing");
     }

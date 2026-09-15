@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Gujarati:wght@400;600&family=Space+Grotesk:wght@500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/styles.css?v=4.0">
 </head>
 <body>
     <!-- Top Bauhaus Application Header -->
@@ -26,12 +26,12 @@
 
             <!-- View Switcher -->
             <nav class="view-nav" aria-label="Main Navigation">
-                <button class="nav-btn active" id="navLandingBtn" data-target="view-landing">Overview</button>
+                <button class="nav-btn active" id="navOverviewBtn" data-target="view-landing">Overview</button>
                 <button class="nav-btn" id="navStudioBtn" data-target="view-studio">Studio</button>
             </nav>
         </div>
 
-        <div class="header-center">
+        <div class="header-center studio-only">
             <div class="sample-selector">
                 <span class="sample-label">Preset:</span>
                 <select id="sampleSelect" class="sample-dropdown" aria-label="Preset document selector">
@@ -40,7 +40,7 @@
             </div>
         </div>
 
-        <div class="header-right">
+        <div class="header-right studio-only">
             <div class="stat-pill" title="Processing Time">
                 <span class="stat-label">Latency</span>
                 <span class="stat-value" id="totalLatency">—</span>
@@ -819,29 +819,6 @@ $ curl -X POST "http://127.0.0.1:8000/api/process" \
     <main id="view-studio" class="view-container workspace">
         <!-- Left Panel: Document View & Upload -->
         <section class="pane left-pane">
-            <!-- Preset Selector Pills Strip -->
-            <div class="preset-pills-bar studio-preset-bar">
-                <span class="preset-bar-label">SELECT FIXTURE:</span>
-                <button class="preset-pill active" data-preset="test_digital_english.pdf">
-                    <span class="pill-dot blue"></span> Digital English Report
-                </button>
-                <button class="preset-pill" data-preset="test_hindi_devanagari.pdf">
-                    <span class="pill-dot green"></span> Hindi &amp; Devanagari
-                </button>
-                <button class="preset-pill" data-preset="test_tables_financial.pdf">
-                    <span class="pill-dot yellow"></span> Financial Statement &amp; Grid
-                </button>
-                <button class="preset-pill" data-preset="01_multilingual.pdf">
-                    <span class="pill-dot red"></span> Gujarati &amp; English Doc
-                </button>
-                <button class="preset-pill" data-preset="Autonomous_Delivery_Robot_System_Design_Report.docx">
-                    <span class="pill-dot blue"></span> System Design (.docx)
-                </button>
-                <button class="preset-pill" data-preset="award.png">
-                    <span class="pill-dot red"></span> Raster Badge (.png)
-                </button>
-            </div>
-
             <!-- Collapsible Upload Strip -->
             <div class="upload-zone" id="uploadBar">
                 <div class="drop-area" id="dropzone">
@@ -1130,6 +1107,6 @@ $ curl -X POST "http://127.0.0.1:8000/api/process" \
     <!-- Toast Notification -->
     <div id="toast" class="toast">Action completed</div>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=4.0"></script>
 </body>
 </html>
