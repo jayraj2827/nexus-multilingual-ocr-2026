@@ -151,6 +151,8 @@ function handleHashNavigation() {
         switchTab("diagnostics");
     } else if (hash === "studio") {
         switchView("studio");
+    } else if (hash === "overview" || hash === "landing") {
+        switchView("landing");
     } else {
         switchView("landing");
     }
@@ -1062,7 +1064,9 @@ function initLandingOutputShowcase() {
     pills.forEach(pill => {
         pill.addEventListener("click", () => {
             const key = pill.getAttribute("data-preset");
+            pills.forEach(p => p.classList.toggle("active", p.getAttribute("data-preset") === key));
             renderPreset(key);
+            processSampleFile(key);
         });
     });
 

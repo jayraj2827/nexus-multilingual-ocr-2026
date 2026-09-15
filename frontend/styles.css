@@ -615,6 +615,10 @@ body {
     box-shadow: 3px 3px 0px var(--bauhaus-red);
 }
 
+.studio-preset-bar {
+    margin-bottom: 14px;
+}
+
 .pill-dot {
     width: 8px;
     height: 8px;
